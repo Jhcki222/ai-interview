@@ -10,13 +10,13 @@ describe("question content", () => {
         categories.map((c) => [c.id, questions.filter((q) => q.category === c.id).length]),
       ),
     ).toEqual({
-      CS: 100,
-      BACKEND: 100,
-      AI: 80,
-      PERSONALITY: 30,
-      MOTIVATION: 20,
-      BUSINESS: 20,
-      PROJECTS: 30,
+      CS: 104,
+      BACKEND: 104,
+      AI: 84,
+      PERSONALITY: 32,
+      MOTIVATION: 22,
+      BUSINESS: 22,
+      PROJECTS: 32,
     });
   });
   it("rejects duplicate IDs and missing follow-up answers", () => {
@@ -51,6 +51,6 @@ describe("question content", () => {
       ),
     ).toBe(true);
     expect(filterQuestions(questions, { category: "AI", query: "존재하지않는검색어" })).toEqual([]);
-    expect(filterQuestions(questions, {})).toHaveLength(380);
+    expect(filterQuestions(questions, {})).toHaveLength(400);
   });
 });

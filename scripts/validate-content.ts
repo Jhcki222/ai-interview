@@ -1,13 +1,13 @@
 import { questions, categories } from "../lib/questions";
 import { validateQuestions } from "../lib/question-validation";
 const required = {
-  CS: 100,
-  BACKEND: 100,
-  AI: 80,
-  PERSONALITY: 30,
-  MOTIVATION: 20,
-  BUSINESS: 20,
-  PROJECTS: 30,
+  CS: 104,
+  BACKEND: 104,
+  AI: 84,
+  PERSONALITY: 32,
+  MOTIVATION: 22,
+  BUSINESS: 22,
+  PROJECTS: 32,
 };
 const errors = validateQuestions(questions);
 for (const c of categories) {
