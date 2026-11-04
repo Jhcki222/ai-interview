@@ -25,7 +25,7 @@ export default async function Protected({ children }: { children: ReactNode }) {
         style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 24 }}
       >
         {[
-          ["/my/questions", "내 질문"],
+          ["/my/questions", "내가 만든 질문"],
           ["/my/answers", "내 답변"],
           ["/my/bookmarks", "북마크"],
           ["/my/progress", "학습 현황"],

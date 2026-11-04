@@ -24,6 +24,14 @@ export const progressSchema = z
     bookmarked: z.boolean(),
   })
   .strict();
+export const progressPatchSchema = z
+  .object({
+    question_key: questionKeySchema,
+    status: progressSchema.shape.status.optional(),
+    bookmarked: z.boolean().optional(),
+  })
+  .strict()
+  .refine((value) => value.status !== undefined || value.bookmarked !== undefined);
 export const savedQuestionSchema = z
   .object({
     id: z.string().min(1).max(150),
@@ -54,6 +62,10 @@ export const savedQuestionSchema = z
   })
   .strict();
 export const questionPatchSchema = z
-  .object({ question: savedQuestionSchema.optional(), note: z.string().max(10000).optional() })
+  .object({
+    question: savedQuestionSchema.optional(),
+    note: z.string().max(10000).optional(),
+    company_id: z.uuid().nullable().optional(),
+  })
   .strict()
-  .refine((v) => v.question !== undefined || v.note !== undefined);
+  .refine((v) => v.question !== undefined || v.note !== undefined || v.company_id !== undefined);

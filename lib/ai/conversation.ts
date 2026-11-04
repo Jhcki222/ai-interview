@@ -12,12 +12,10 @@ export function buildConversationRequest(
   answer: string,
   previous: PriorTurn[] = [],
 ) {
-  const history = previous
-    .slice(-6)
-    .map((turn) => ({
-      question: excerpt(turn.question, 1000),
-      answer: excerpt(turn.answer, 1200),
-    }));
+  const history = previous.slice(-6).map((turn) => ({
+    question: excerpt(turn.question, 1000),
+    answer: excerpt(turn.answer, 1200),
+  }));
   const body = { action, question, answer, history };
   requestSchema.parse(body);
   return body;

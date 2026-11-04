@@ -46,6 +46,7 @@ export const settingsSchema = z.object({
   count: z.union([z.literal(5), z.literal(10), z.literal(15)]),
   mode: z.enum(["learn", "chat"]),
   company: z.string().trim().max(100).default(""),
+  industry: z.string().trim().max(100).default(""),
   division: z.string().trim().max(100).default(""),
   jobPosting: z.string().trim().max(12000).default(""),
   interviewType: z
@@ -70,7 +71,7 @@ export const summaryEvaluationSchema = z.object({
 export const conversationHistorySchema = z
   .array(z.object({ question: z.string().min(1).max(1000), answer: z.string().min(1).max(1200) }))
   .max(6);
-export const requestSchema = z.discriminatedUnion("action", [
+const coreRequestSchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("analyze"),
     documents: z.string().min(1).max(45000),
@@ -108,3 +109,16 @@ export type Analysis = z.infer<typeof analysisSchema>;
 export type Evaluation = z.infer<typeof evaluationSchema>;
 export type Settings = z.infer<typeof settingsSchema>;
 export type Summary = z.infer<typeof summarySchema>;
+
+export const modelSelectionSchema = z
+  .object({
+    provider: z.enum(["nvidia", "groq", "ollama", "openai"]),
+    model: z.string().min(1).max(200),
+  })
+  .strict();
+export const requestSchema = coreRequestSchema.and(
+  z.object({
+    selection: modelSelectionSchema.optional(),
+    allowFallback: z.boolean().default(true),
+  }),
+);

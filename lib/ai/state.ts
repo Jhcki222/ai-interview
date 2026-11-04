@@ -6,6 +6,7 @@ import {
   settingsSchema,
   analysisSchema,
   followupSchema,
+  modelSelectionSchema,
 } from "./schemas";
 export const phases = [
   "SETUP",
@@ -39,6 +40,8 @@ export function transition(from: Phase, to: Phase): Phase {
 export const sessionSchema = z
   .object({
     version: z.literal(1),
+    selection: modelSelectionSchema.optional(),
+    allowFallback: z.boolean().default(true),
     id: z.string().max(100).default(""),
     learningAnswers: z.record(z.string(), z.string().max(8000)).default({}),
     learningEvaluations: z.record(z.string(), evaluationSchema).default({}),

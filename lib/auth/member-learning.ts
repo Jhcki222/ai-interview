@@ -3,6 +3,7 @@ export type SavedQuestionRecord = {
   id: string;
   question: Question;
   note: string;
+  company_id?: string | null;
   created_at?: string;
   updated_at?: string;
 };

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { member, readBody, invalid, dbError } from "@/lib/auth/api";
 import { questionPatchSchema } from "@/lib/auth/validation";
+import { isCompanyMigrationMissing, companyMigrationMessage } from "@/lib/auth/companies";
 type Context = { params: Promise<{ id: string }> };
 export async function PATCH(request: Request, { params }: Context) {
   const auth = await member(request, true);
@@ -14,13 +15,34 @@ export async function PATCH(request: Request, { params }: Context) {
   } catch {
     return invalid();
   }
+  if (payload.company_id) {
+    const company = await auth.client
+      .from("company_collections")
+      .select("id")
+      .eq("id", payload.company_id)
+      .eq("user_id", auth.user.id)
+      .maybeSingle();
+    if (isCompanyMigrationMissing(company.error))
+      return NextResponse.json(
+        { error: companyMigrationMessage, code: "MIGRATION_REQUIRED" },
+        { status: 503 },
+      );
+    if (company.error) return dbError();
+    if (!company.data) return invalid();
+  }
   const { data, error } = await auth.client
     .from("saved_questions")
     .update(payload)
     .eq("id", id)
     .eq("user_id", auth.user.id)
-    .select("id,question,note,created_at,updated_at")
+    .select("id,question,note,company_id,created_at,updated_at")
     .maybeSingle();
+  if (isCompanyMigrationMissing(error))
+    return NextResponse.json(
+      { error: companyMigrationMessage, code: "MIGRATION_REQUIRED" },
+      { status: 503 },
+    );
+  if (error?.code === "23503") return invalid();
   return error
     ? dbError()
     : data

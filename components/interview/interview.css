@@ -342,3 +342,85 @@
 .interview-preview p {
   margin-bottom: 0;
 }
+.interview-model-picker {
+  padding: 22px;
+  display: grid;
+  gap: 16px;
+}
+.interview-model-picker h2 {
+  font-size: 16px;
+  margin: 0;
+}
+.interview-model-picker p {
+  font-size: 12px;
+  margin: 6px 0 0;
+  line-height: 1.7;
+}
+.interview-model-picker label {
+  display: grid;
+  gap: 8px;
+  font-size: 13px;
+}
+.interview-model-picker .interview-form-grid {
+  grid-template-columns: 1fr 2fr;
+}
+.interview-model-picker label.interview-fallback {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.interview-fallback input {
+  margin-top: 4px;
+  accent-color: var(--primary, #4f46e5);
+}
+.interview-fallback span {
+  display: grid;
+  gap: 5px;
+}
+.interview-fallback small {
+  line-height: 1.6;
+}
+.interview-ai-status {
+  display: grid;
+  gap: 7px;
+  padding: 16px;
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--primary, #4f46e5) 4%, transparent);
+  font-size: 13px;
+}
+.interview-ai-status small {
+  overflow-wrap: anywhere;
+  color: var(--muted-foreground, #64748b);
+  font-size: 11px;
+}
+@media (max-width: 640px) {
+  .interview-model-picker .interview-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.interview-token-notice {
+  border: 1px solid color-mix(in srgb, var(--primary) 15%, var(--border));
+  background: color-mix(in srgb, var(--primary) 4%, var(--surface));
+  border-radius: 10px;
+  padding: 15px 17px;
+  font-size: 12px;
+  line-height: 1.85;
+  color: var(--secondary-text);
+}
+.interview-token-notice strong {
+  display: block;
+  color: var(--foreground);
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.interview-token-notice p {
+  margin: 0;
+}
+.interview-token-notice small {
+  display: block;
+  margin-top: 5px;
+  font-size: 10px;
+  color: var(--muted);
+}

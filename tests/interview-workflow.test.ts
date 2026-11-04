@@ -36,3 +36,13 @@ it("restores learning drafts only under the matching session id", () => {
     learningAnswers: { q: "내 답변" },
   });
 });
+
+it("validates separate industry targeting while preserving custom roles and legacy defaults", () => {
+  const settings = { role: "은행 디지털 금융 개발 담당", level: "신입", count: 5, mode: "learn" };
+  expect(settingsSchema.parse(settings).industry).toBe("");
+  expect(settingsSchema.parse({ ...settings, industry: "은행 · 금융" })).toMatchObject({
+    role: "은행 디지털 금융 개발 담당",
+    industry: "은행 · 금융",
+  });
+  expect(settingsSchema.safeParse({ ...settings, industry: "한".repeat(101) }).success).toBe(false);
+});

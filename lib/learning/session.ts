@@ -56,3 +56,10 @@ export function importableProgress(
       (value.status !== "NOT_STARTED" || value.bookmarked),
   );
 }
+export function canMutateLearning(
+  viewerId: string | null,
+  loadedOwnerId: string | null,
+  hydrated: boolean,
+) {
+  return !!viewerId && viewerId === loadedOwnerId && hydrated;
+}

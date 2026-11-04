@@ -3,10 +3,11 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getQuestion } from "@/lib/questions";
 import { readBoundedText } from "@/lib/ai/request-body";
+import { isSameAIOrigin as isSameOrigin } from "@/lib/ai/origin";
 export async function member(request: Request, mutating = false) {
   if (mutating) {
     const origin = request.headers.get("origin");
-    if (!origin || origin !== new URL(request.url).origin)
+    if (!origin || !isSameOrigin(request, process.env.VERCEL === "1"))
       return {
         error: NextResponse.json({ error: "요청 출처를 확인할 수 없습니다." }, { status: 403 }),
       } as const;

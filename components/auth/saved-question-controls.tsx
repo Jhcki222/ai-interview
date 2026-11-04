@@ -66,7 +66,7 @@ export function SavedQuestionControls({
             onChange={(e) =>
               void onMutate("/api/me/progress", "POST", {
                 question_key: questionKey,
-                ...progress,
+
                 status: e.target.value,
               })
             }
@@ -85,7 +85,7 @@ export function SavedQuestionControls({
           onClick={() =>
             void onMutate("/api/me/progress", "POST", {
               question_key: questionKey,
-              ...progress,
+
               bookmarked: !progress.bookmarked,
             })
           }

@@ -1,7 +1,16 @@
 "use client";
 import { useState, type FormEvent } from "react";
 import { categories } from "@/lib/questions";
-export function CreateQuestionForm({ onCreated }: { onCreated: () => void }) {
+import type { CompanyCollection } from "@/types/company";
+export function CreateQuestionForm({
+  onCreated,
+  companies = [],
+  initialCompanyId = null,
+}: {
+  onCreated: () => void;
+  companies?: CompanyCollection[];
+  initialCompanyId?: string | null;
+}) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -17,28 +26,31 @@ export function CreateQuestionForm({ onCreated }: { onCreated: () => void }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          id: `custom-${crypto.randomUUID()}`,
-          category: value("category"),
-          subcategory: value("subcategory"),
-          topic: value("topic"),
-          difficulty: value("difficulty"),
-          importance: value("importance"),
-          question: value("question"),
-          modelAnswer: {
-            summary: value("summary"),
-            interviewAnswer: value("interviewAnswer"),
-            detailedExplanation: value("detailedExplanation"),
-            example: value("example"),
-            keywords: value("keywords")
-              .split(",")
-              .map((v) => v.trim())
-              .filter(Boolean),
+          company_id: value("company_id") || null,
+          question: {
+            id: `custom-${crypto.randomUUID()}`,
+            category: value("category"),
+            subcategory: value("subcategory"),
+            topic: value("topic"),
+            difficulty: value("difficulty"),
+            importance: value("importance"),
+            question: value("question"),
+            modelAnswer: {
+              summary: value("summary"),
+              interviewAnswer: value("interviewAnswer"),
+              detailedExplanation: value("detailedExplanation"),
+              example: value("example"),
+              keywords: value("keywords")
+                .split(",")
+                .map((v) => v.trim())
+                .filter(Boolean),
+            },
+            followUps: [0, 1].map((i) => ({
+              id: `follow-up-${i + 1}`,
+              question: value(`fq${i}`),
+              modelAnswer: value(`fa${i}`),
+            })),
           },
-          followUps: [0, 1].map((i) => ({
-            id: `follow-up-${i + 1}`,
-            question: value(`fq${i}`),
-            modelAnswer: value(`fa${i}`),
-          })),
         }),
       });
       const result = await response.json();
@@ -55,7 +67,7 @@ export function CreateQuestionForm({ onCreated }: { onCreated: () => void }) {
   return (
     <div style={{ margin: "24px 0" }}>
       <button className="btn btn-primary" onClick={() => setOpen(!open)}>
-        {open ? "새 질문 작성 닫기" : "+ 나만의 질문 만들기"}
+        {open ? "새 질문 작성 닫기" : "+ 질문 추가"}
       </button>
       {open && (
         <form
@@ -64,6 +76,18 @@ export function CreateQuestionForm({ onCreated }: { onCreated: () => void }) {
           style={{ padding: 24, marginTop: 16, display: "grid", gap: 16 }}
         >
           <h2>나만의 면접 질문</h2>
+          <label>
+            기업 폴더
+            <select className="select" name="company_id" defaultValue={initialCompanyId ?? ""}>
+              <option value="">미분류</option>
+              {companies.map((company) => (
+                <option key={company.id} value={company.id}>
+                  {company.name}
+                  {company.position ? ` · ${company.position}` : ""}
+                </option>
+              ))}
+            </select>
+          </label>
           <label>
             카테고리
             <select name="category" className="select">
@@ -125,7 +149,7 @@ export function CreateQuestionForm({ onCreated }: { onCreated: () => void }) {
             <input name="keywords" className="input" maxLength={500} />
           </label>
           <button className="btn btn-primary" disabled={busy}>
-            {busy ? "저장 중…" : "내 질문에 저장"}
+            {busy ? "저장 중…" : "내가 만든 질문에 저장"}
           </button>
           <p role="alert">{error}</p>
         </form>

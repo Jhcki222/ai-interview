@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import type { Question } from "@/types/question";
 import { categories, questions } from "@/lib/questions";
 import {
@@ -14,6 +15,9 @@ import { SavedQuestionEditor } from "./saved-question-editor";
 import { LearningDashboard } from "./learning-dashboard";
 import { useAuth } from "./auth-provider";
 import { canExposeMemberData, isCurrentMemberRequest } from "@/lib/auth/session";
+import type { CompanyCollection } from "@/types/company";
+import { filterCompanyQuestions, resolveSavedQuestionDeepLink } from "@/lib/auth/companies";
+import { CompanyBoard } from "./company-board";
 
 const statusNames = {
   NOT_STARTED: "시작 전",
@@ -28,10 +32,21 @@ export function MemberWorkspace({
 }) {
   const { user, loading: authLoading, configured } = useAuth();
   const ownerId = user?.id ?? null;
+  const search = useSearchParams().toString();
+  const [linkHash, setLinkHash] = useState("");
+  const [deepLinkTarget, setDeepLinkTarget] = useState<string | null>(null);
+  const handledDeepLink = useRef<string | null>(null);
+  useEffect(() => {
+    const update = () => setLinkHash(window.location.hash);
+    update();
+    window.addEventListener("hashchange", update);
+    return () => window.removeEventListener("hashchange", update);
+  }, []);
   const [loaded, setLoaded] = useState<{
     ownerId: string;
     saved: SavedQuestionRecord[];
     state: MemberLearningState;
+    companies: CompanyCollection[];
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [failure, setFailure] = useState<{ ownerId: string | null; message: string } | null>(null);
@@ -39,12 +54,14 @@ export function MemberWorkspace({
   const [busy, setBusy] = useState(false);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("ALL");
+  const [companyFilter, setCompanyFilter] = useState("BOARD");
   const currentOwner = useRef(ownerId);
   currentOwner.current = ownerId;
   const loadVersion = useRef(0);
   const mutationVersion = useRef(0);
   const visibleOwner = canExposeMemberData(ownerId, loaded?.ownerId ?? null, authLoading);
   const saved = visibleOwner ? loaded!.saved : [];
+  const companies = visibleOwner ? loaded!.companies : [];
   const state: MemberLearningState = visibleOwner ? loaded!.state : { answers: {}, progress: {} };
   const error = failure?.ownerId === ownerId ? failure.message : "";
   const load = useCallback(async () => {
@@ -54,12 +71,17 @@ export function MemberWorkspace({
     setLoading(true);
     setFailure(null);
     try {
-      const responses = await Promise.all([fetch("/api/me/questions"), fetch("/api/me/state")]);
-      const [a, b] = await Promise.all(responses.map((response) => response.json()));
+      const responses = await Promise.all([
+        fetch("/api/me/questions"),
+        fetch("/api/me/state"),
+        fetch("/api/me/companies"),
+      ]);
+      const [a, b, c] = await Promise.all(responses.map((response) => response.json()));
       if (!isCurrentMemberRequest(requestOwner, currentOwner.current, version, loadVersion.current))
         return;
-      if (responses.some((response) => !response.ok)) throw new Error(a.error || b.error);
-      setLoaded({ ownerId: requestOwner, saved: a.questions, state: b });
+      if (responses.some((response) => !response.ok))
+        throw new Error(a.error || b.error || c.error);
+      setLoaded({ ownerId: requestOwner, saved: a.questions, state: b, companies: c.companies });
       setFailure(null);
     } catch (e) {
       if (isCurrentMemberRequest(requestOwner, currentOwner.current, version, loadVersion.current))
@@ -77,6 +99,9 @@ export function MemberWorkspace({
     setEditing(null);
     setQuery("");
     setCategory("ALL");
+    setCompanyFilter("BOARD");
+    setDeepLinkTarget(null);
+    handledDeepLink.current = null;
     void load();
     return () => {
       loadVersion.current++;
@@ -127,7 +152,49 @@ export function MemberWorkspace({
     key.startsWith("saved:")
       ? saved.find((row) => row.id === key.slice(6))?.question
       : questions.find((question) => question.id === key.slice(5));
-  const visibleSaved = filterSavedQuestions(saved, query, category);
+  const visibleSaved = filterCompanyQuestions(
+    filterSavedQuestions(saved, query, category),
+    companyFilter,
+  );
+  const selectedCompany = companies.find((company) => company.id === companyFilter);
+  const showQuestionDetail = view === "questions" && companyFilter !== "BOARD";
+  useEffect(() => {
+    if (view !== "questions" || !visibleOwner || !loaded) return;
+    const linkKey = `${ownerId}|${search}|${linkHash}`;
+    if (handledDeepLink.current === linkKey) return;
+    const target = resolveSavedQuestionDeepLink(loaded.saved, search, linkHash);
+    if (!target) return;
+    handledDeepLink.current = linkKey;
+    setCompanyFilter(target.companyFilter);
+    setCategory("ALL");
+    setQuery("");
+    setDeepLinkTarget(target.questionId);
+  }, [view, visibleOwner, loaded, ownerId, search, linkHash]);
+  useEffect(() => {
+    if (!deepLinkTarget || !showQuestionDetail || !visibleOwner) return;
+    const element = document.getElementById(`saved-${deepLinkTarget}`);
+    if (!element) return;
+    const frame = requestAnimationFrame(() => {
+      element.scrollIntoView({ behavior: "smooth", block: "start" });
+      element.tabIndex = -1;
+      element.focus({ preventScroll: true });
+      setDeepLinkTarget(null);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [deepLinkTarget, showQuestionDetail, visibleOwner, companyFilter, query, category]);
+  function selectCompany(id: string) {
+    setCompanyFilter(id);
+    setQuery("");
+    setCategory("ALL");
+    if (id !== "BOARD")
+      setTimeout(
+        () =>
+          document
+            .getElementById("company-questions")
+            ?.scrollIntoView({ behavior: "smooth", block: "start" }),
+        30,
+      );
+  }
   const keys = (
     view === "answers"
       ? Object.keys(state.answers)
@@ -146,7 +213,7 @@ export function MemberWorkspace({
     );
   });
   const titles = {
-    questions: "내 질문",
+    questions: "내가 만든 질문",
     answers: "내 답변",
     bookmarks: "북마크",
     progress: "학습 현황",
@@ -187,7 +254,11 @@ export function MemberWorkspace({
     <section className="member-workspace">
       <p className="eyebrow">MY LEARNING</p>
       <h1 className="page-heading">{titles[view]}</h1>
-      <p className="muted">내 계정에 저장된 실제 학습 기록입니다.</p>
+      <p className="muted">
+        {view === "questions"
+          ? "지원할 기업을 추가하고, 기업별로 나만의 면접 질문을 준비하세요."
+          : "내 계정에 저장된 실제 학습 기록입니다."}
+      </p>
       {loading && <p role="status">불러오는 중…</p>}
       {error && (
         <div role="alert" className="panel">
@@ -197,11 +268,49 @@ export function MemberWorkspace({
           </button>
         </div>
       )}
-      {view === "questions" && <CreateQuestionForm onCreated={() => void load()} />}
+      {view === "questions" && (
+        <CompanyBoard
+          companies={companies}
+          questions={saved}
+          state={state}
+          selected={companyFilter}
+          onSelect={selectCompany}
+          onChanged={() => void load()}
+        />
+      )}
+      {showQuestionDetail && (
+        <div id="company-questions" className="company-question-heading">
+          <div>
+            <h2>
+              {selectedCompany
+                ? selectedCompany.name
+                : companyFilter === "UNASSIGNED"
+                  ? "미분류 질문"
+                  : "전체 질문"}
+            </h2>
+            <p>
+              {selectedCompany?.position ? `${selectedCompany.position} · ` : ""}
+              {visibleSaved.length}개 질문
+              {companyFilter === "UNASSIGNED" ? " · 기존 질문은 여기에 보관됩니다." : ""}
+            </p>
+          </div>
+          <button className="btn btn-secondary" onClick={() => selectCompany("BOARD")}>
+            기업 보드로
+          </button>
+        </div>
+      )}
+      {showQuestionDetail && (
+        <CreateQuestionForm
+          key={companyFilter}
+          companies={companies}
+          initialCompanyId={selectedCompany?.id ?? null}
+          onCreated={() => void load()}
+        />
+      )}
       {view === "progress" && !loading && !error && (
         <LearningDashboard saved={saved} state={state} />
       )}
-      {view !== "progress" && (
+      {view !== "progress" && (view !== "questions" || showQuestionDetail) && (
         <div
           className="member-filters"
           style={{ display: "flex", gap: 16, flexWrap: "wrap", margin: "24px 0" }}
@@ -231,6 +340,25 @@ export function MemberWorkspace({
               ))}
             </select>
           </label>
+          {view === "questions" && (
+            <label>
+              기업
+              <select
+                className="select"
+                value={companyFilter}
+                onChange={(event) => setCompanyFilter(event.target.value)}
+              >
+                <option value="ALL">전체 기업</option>
+                <option value="UNASSIGNED">미분류</option>
+                {companies.map((company) => (
+                  <option key={company.id} value={company.id}>
+                    {company.name}
+                    {company.position ? ` · ${company.position}` : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
         </div>
       )}
       {view === "questions"
@@ -244,6 +372,7 @@ export function MemberWorkspace({
               {editing === row.id ? (
                 <SavedQuestionEditor
                   record={row}
+                  companies={companies}
                   busy={busy}
                   onCancel={() => setEditing(null)}
                   onSave={(payload) => mutate(`/api/me/questions/${row.id}`, "PATCH", payload)}
@@ -257,6 +386,27 @@ export function MemberWorkspace({
                   <h2>{row.question.question}</h2>
                   <SavedModelAnswer question={row.question} />
                   {row.note && <p style={{ whiteSpace: "pre-wrap" }}>{row.note}</p>}
+                  <label className="company-assignment">
+                    기업 폴더
+                    <select
+                      className="select"
+                      value={row.company_id ?? ""}
+                      disabled={busy}
+                      onChange={(event) =>
+                        void mutate(`/api/me/questions/${row.id}`, "PATCH", {
+                          company_id: event.target.value || null,
+                        })
+                      }
+                    >
+                      <option value="">미분류</option>
+                      {companies.map((company) => (
+                        <option key={company.id} value={company.id}>
+                          {company.name}
+                          {company.position ? ` · ${company.position}` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                   <SavedQuestionControls
                     id={row.id}
                     answer={state.answers[`saved:${row.id}`]}
@@ -351,7 +501,7 @@ export function MemberWorkspace({
                         onChange={(event) =>
                           void mutate("/api/me/progress", "POST", {
                             question_key: key,
-                            ...state.progress[key],
+
                             status: event.target.value,
                           })
                         }
@@ -369,7 +519,7 @@ export function MemberWorkspace({
                       onClick={() =>
                         void mutate("/api/me/progress", "POST", {
                           question_key: key,
-                          ...state.progress[key],
+
                           bookmarked: !state.progress[key].bookmarked,
                         })
                       }
@@ -381,21 +531,25 @@ export function MemberWorkspace({
               </article>
             );
           })}
-      {!loading && !error && empty && view !== "progress" && (
-        <div className="panel empty-state">
-          <h2>
-            {query || category !== "ALL" ? "검색 결과가 없어요" : "아직 저장된 기록이 없어요"}
-          </h2>
-          <p className="muted">
-            {query || category !== "ALL"
-              ? "검색어나 카테고리를 바꿔 보세요."
-              : "질문을 학습하고 나만의 답변을 남겨 보세요."}
-          </p>
-          <Link className="btn btn-primary" href="/questions">
-            질문 둘러보기
-          </Link>
-        </div>
-      )}
+      {!loading &&
+        !error &&
+        empty &&
+        view !== "progress" &&
+        (view !== "questions" || showQuestionDetail) && (
+          <div className="panel empty-state">
+            <h2>
+              {query || category !== "ALL" ? "검색 결과가 없어요" : "아직 저장된 기록이 없어요"}
+            </h2>
+            <p className="muted">
+              {query || category !== "ALL"
+                ? "검색어나 카테고리를 바꿔 보세요."
+                : "질문을 학습하고 나만의 답변을 남겨 보세요."}
+            </p>
+            <Link className="btn btn-primary" href="/questions">
+              질문 둘러보기
+            </Link>
+          </div>
+        )}
     </section>
   );
 }

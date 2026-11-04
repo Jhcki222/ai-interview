@@ -4,17 +4,24 @@ import { categories } from "@/lib/questions";
 import { savedQuestionSchema } from "@/lib/auth/validation";
 import type { SavedQuestionRecord } from "@/lib/auth/member-learning";
 import type { Question } from "@/types/question";
+import type { CompanyCollection } from "@/types/company";
 
 export function SavedQuestionEditor({
   record,
   busy,
   onSave,
   onCancel,
+  companies = [],
 }: {
   record: SavedQuestionRecord;
   busy: boolean;
-  onSave: (payload: { question: Question; note: string }) => Promise<void>;
+  onSave: (payload: {
+    question: Question;
+    note: string;
+    company_id: string | null;
+  }) => Promise<void>;
   onCancel: () => void;
+  companies?: CompanyCollection[];
 }) {
   const [followUps, setFollowUps] = useState(
     record.question.followUps.map((item) => ({ ...item })),
@@ -54,11 +61,27 @@ export function SavedQuestionEditor({
       return;
     }
     setError("");
-    await onSave({ question: result.data, note: value("note") });
+    await onSave({
+      question: result.data,
+      note: value("note"),
+      company_id: value("company_id") || null,
+    });
   }
   return (
     <form onSubmit={submit} className="saved-question-editor" style={{ display: "grid", gap: 16 }}>
-      <h2>내 질문 편집</h2>
+      <h2>내가 만든 질문 편집</h2>
+      <label>
+        기업 폴더
+        <select className="select" name="company_id" defaultValue={record.company_id ?? ""}>
+          <option value="">미분류</option>
+          {companies.map((company) => (
+            <option key={company.id} value={company.id}>
+              {company.name}
+              {company.position ? ` · ${company.position}` : ""}
+            </option>
+          ))}
+        </select>
+      </label>
       <div className="member-form-grid">
         <label>
           카테고리

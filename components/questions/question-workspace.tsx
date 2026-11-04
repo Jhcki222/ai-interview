@@ -12,11 +12,7 @@ import {
   X,
 } from "lucide-react";
 import { motion } from "motion/react";
-import {
-  Book01Icon,
-  Search01Icon,
-  SlidersHorizontalIcon,
-} from "@hugeicons/core-free-icons";
+import { Book01Icon, Search01Icon, SlidersHorizontalIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { Button } from "@/components/ui/button";
@@ -336,6 +332,11 @@ export function QuestionWorkspace({
           {learning.error && (
             <div className="learning-alert learning-error" role="alert">
               {learning.error}
+              {user && (
+                <Button variant="ghost" size="sm" onClick={learning.reload}>
+                  기록 다시 불러오기
+                </Button>
+              )}
             </div>
           )}
           {learning.notice && (
@@ -369,7 +370,7 @@ export function QuestionWorkspace({
           <div className="question-list">
             {visible.map((q, index) => {
               const key = `base:${q.id}`;
-              const busy = learning.busy === key;
+              const busy = learning.busy === key || (!!user && !learning.loaded);
               return (
                 <motion.div
                   key={q.id}

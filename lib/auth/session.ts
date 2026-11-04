@@ -23,3 +23,15 @@ export function isCurrentMemberRequest(
 ) {
   return requestOwner === currentOwner && requestVersion === currentVersion;
 }
+export type CompanyDialogRequest = { owner: string; questionId: string; version: number };
+export function companyDialogRequestMatches(
+  request: CompanyDialogRequest | null,
+  current: { owner: string | null; questionId: string | null; version: number },
+) {
+  return (
+    !!request &&
+    request.owner === current.owner &&
+    request.questionId === current.questionId &&
+    request.version === current.version
+  );
+}

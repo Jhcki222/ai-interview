@@ -10,9 +10,13 @@ const status = {
   supabaseServerKey: !!privateKey,
   guestSigningSecret: !!cookieSecret && cookieSecret.length >= 32,
   aiProvider: process.env.AI_PROVIDER || "groq",
-  aiKey: !!(process.env.AI_PROVIDER === "openai"
-    ? process.env.OPENAI_API_KEY
-    : process.env.GROQ_API_KEY),
+  aiKey: !!(process.env.AI_PROVIDER === "nvidia"
+    ? process.env.NVIDIA_API_KEY
+    : process.env.AI_PROVIDER === "ollama"
+      ? process.env.OLLAMA_API_KEY
+      : process.env.AI_PROVIDER === "openai"
+        ? process.env.OPENAI_API_KEY
+        : process.env.GROQ_API_KEY),
   aiModel: !!process.env.AI_MODEL,
 };
 console.log(JSON.stringify(status, null, 2));
@@ -37,6 +41,9 @@ if (!url || !publicKey || !privateKey) {
     console.log(
       JSON.stringify({
         schemaAvailable: !schema.error,
+        schemaStatus: schema.status,
+        schemaErrorCode: schema.error?.code ?? null,
+        schemaErrorMessage: schema.error?.message ?? null,
         anonymousReadDenied: !!rls.error,
         anonymousVisibleRows: rls.count,
       }),

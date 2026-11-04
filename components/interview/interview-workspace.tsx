@@ -30,12 +30,18 @@ import { extractDocuments } from "@/lib/documents/extract";
 import { validateFiles } from "@/lib/documents/limits";
 import type { Question } from "@/types/question";
 import "./interview.css";
+import { INDUSTRIES, JOB_GROUPS } from "@/lib/interview/job-catalog";
+import { ModelPicker } from "./model-picker";
+import { QuestionCompanyDialog } from "@/components/auth/question-company-dialog";
+import type { Selection } from "@/lib/ai/catalog";
+import type { AIStatus } from "@/lib/ai/reliability";
 const initialSettings: Settings = {
   role: "백엔드 개발자",
   level: "신입",
   count: 5,
   mode: "chat",
   company: "",
+  industry: "",
   division: "",
   jobPosting: "",
   interviewType: "comprehensive",
@@ -45,6 +51,13 @@ const blankAnalysis: Analysis = { summary: "", skills: [], experiences: [], unce
 type Turn = { question: string; answer: string; evaluation: Evaluation };
 const SESSION_KEY = "interview-session-v1";
 export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?: string }) {
+  const [customRoleMode, setCustomRoleMode] = useState(false);
+  const [questionToSave, setQuestionToSave] = useState<Question | null>(null);
+  const [selection, setSelection] = useState<Selection>();
+  const [allowFallback, setAllowFallback] = useState(true);
+  const [aiStatus, setAIStatus] = useState<AIStatus | null>(null);
+  const [statusHistory, setStatusHistory] = useState<AIStatus[]>([]);
+  const [elapsed, setElapsed] = useState(0);
   const [preview, setPreview] = useState("");
   const [sessionId, setSessionId] = useState("");
   const [unmatched, setUnmatched] = useState(false);
@@ -82,6 +95,8 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
         setSessionId(restored.id || crypto.randomUUID());
         setPhase(restored.phase);
         setSettings(restored.settings);
+        setSelection(restored.selection);
+        setAllowFallback(restored.allowFallback);
         setAnalysis(restored.analysis);
         setQuestions(restored.questions);
         setIndex(restored.index);
@@ -110,6 +125,8 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
     try {
       const value = {
         version: 1,
+        selection,
+        allowFallback,
         id: sessionId,
         learningAnswers,
         learningEvaluations,
@@ -129,6 +146,8 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
       setNotice("브라우저 저장 공간 부족으로 진행을 복원할 수 없습니다.");
     }
   }, [
+    selection,
+    allowFallback,
     ready,
     unmatched,
     sessionId,
@@ -145,6 +164,20 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
     followup,
     followupCount,
   ]);
+  useEffect(() => {
+    if (!busy) return;
+    const started = Date.now();
+    setElapsed(0);
+    const timer = setInterval(() => setElapsed(Math.floor((Date.now() - started) / 1000)), 1000);
+    return () => clearInterval(timer);
+  }, [busy]);
+  function handleStatus(value: AIStatus) {
+    setAIStatus(value);
+    setStatusHistory((previous) =>
+      value.state === "initializing" ? [value] : [...previous.slice(-9), value],
+    );
+    if (["connecting", "retrying", "fallback"].includes(value.state)) setPreview("");
+  }
   async function run<T>(
     body: unknown,
     schema: z.ZodType<T>,
@@ -159,7 +192,10 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
     setPreview("");
     move(during);
     controller.current = new AbortController();
-    const timeout = setTimeout(() => controller.current?.abort(), 115000);
+    const timeout = setTimeout(
+      () => controller.current?.abort(new DOMException("Request timeout", "TimeoutError")),
+      115000,
+    );
     try {
       const result = await requestAI(
         body,
@@ -167,6 +203,7 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
         controller.current.signal,
         setProgress,
         setPreview,
+        { selection, allowFallback, onStatus: handleStatus },
       );
       success(result);
       retry.current = null;
@@ -282,7 +319,10 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
     setError("");
     setPreview("");
     controller.current = new AbortController();
-    const timeout = setTimeout(() => controller.current?.abort(), 115000);
+    const timeout = setTimeout(
+      () => controller.current?.abort(new DOMException("Request timeout", "TimeoutError")),
+      115000,
+    );
     try {
       const value = await requestAI(
         buildConversationRequest("followup", latest.question, latest.answer, turns.slice(0, -1)),
@@ -290,6 +330,7 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
         controller.current.signal,
         setProgress,
         setPreview,
+        { selection, allowFallback, onStatus: handleStatus },
       );
       setFollowup(value);
       setFollowupCount((n) => n + 1);
@@ -345,18 +386,7 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
       setAuthOpen(true);
       return;
     }
-    try {
-      const response = await fetch("/api/me/questions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question }),
-      });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "저장하지 못했습니다.");
-      setNotice("내 질문에 저장했습니다.");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "저장하지 못했습니다.");
-    }
+    setQuestionToSave(question);
   }
   function addFiles(incoming: File[]) {
     if (busy) return;
@@ -386,7 +416,10 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
     setError("");
     setPreview("");
     controller.current = new AbortController();
-    const timeout = setTimeout(() => controller.current?.abort(), 115000);
+    const timeout = setTimeout(
+      () => controller.current?.abort(new DOMException("Request timeout", "TimeoutError")),
+      115000,
+    );
     try {
       const evaluation = await requestAI(
         buildConversationRequest("evaluate", question.question, answer),
@@ -394,6 +427,7 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
         controller.current.signal,
         setProgress,
         setPreview,
+        { selection, allowFallback, onStatus: handleStatus },
       );
       setLearningEvaluations((previous) => ({ ...previous, [question.id]: evaluation }));
     } catch (e) {
@@ -421,6 +455,12 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
     );
   return (
     <div className="interview-workspace">
+      <QuestionCompanyDialog
+        question={questionToSave}
+        onClose={() => setQuestionToSave(null)}
+        onSaved={setNotice}
+        suggestedCompanyName={settings.company}
+      />
       <Dialog open={authOpen} onOpenChange={setAuthOpen}>
         <DialogContent>
           <DialogTitle>질문을 계정에 보관하세요</DialogTitle>
@@ -474,6 +514,60 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
           </li>
         ))}
       </ol>
+      <ModelPicker
+        selection={selection}
+        onChange={setSelection}
+        allowFallback={allowFallback}
+        onFallbackChange={setAllowFallback}
+        disabled={busy}
+      />
+      {aiStatus && (
+        <section className="interview-ai-status" role="status">
+          <strong>
+            {
+              {
+                initializing: "초기화",
+                connecting: "연결 중",
+                processing: "생성 중",
+                validating: "검증 중",
+                retrying: "재시도",
+                fallback: "대체 모델 연결",
+                completed: "완료",
+                timeout: "시간 초과",
+                ratelimit: "요청 한도",
+                missingconfig: "설정 필요",
+                failed: "처리 실패",
+                cancelled: "취소됨",
+              }[aiStatus.state]
+            }
+          </strong>
+          <span>{aiStatus.message}</span>
+          <small>
+            {aiStatus.provider && `${aiStatus.provider} · ${aiStatus.model}`} ·{" "}
+            {busy ? elapsed : Math.round((aiStatus.elapsedMs || 0) / 1000)}초
+            {aiStatus.attempt ? ` · 시도 ${aiStatus.attempt}` : ""}
+            {aiStatus.code ? ` · ${aiStatus.code}` : ""}
+            {aiStatus.correlationId ? ` · 요청 ${aiStatus.correlationId}` : ""}
+            {aiStatus.retryAfterMs
+              ? ` · ${Math.ceil(aiStatus.retryAfterMs / 1000)}초 후 재시도`
+              : ""}
+          </small>
+        </section>
+      )}
+      {statusHistory.length > 1 && (
+        <details className="interview-ai-status">
+          <summary>연결·재시도 기록 ({statusHistory.length})</summary>
+          <ol>
+            {statusHistory.map((item, i) => (
+              <li key={i}>
+                {item.message} {item.provider && `${item.provider} / ${item.model}`}{" "}
+                {item.code && `· ${item.code}`}{" "}
+                {item.elapsedMs !== undefined && `· ${(item.elapsedMs / 1000).toFixed(1)}초`}
+              </li>
+            ))}
+          </ol>
+        </details>
+      )}{" "}
       {notice && (
         <div className="interview-notice" role="status">
           {notice} {!user && <Link href="/login?next=/interview">로그인</Link>}
@@ -517,16 +611,62 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
             <h2>어떤 면접을 준비하나요?</h2>
             <p className="muted">지원 직무와 경험을 알려주면 관련 질문을 구성합니다.</p>
           </div>
+          <label>
+            산업 · 기관 유형 (선택)
+            <select
+              className="select"
+              value={settings.industry}
+              onChange={(e) => setSettings({ ...settings, industry: e.target.value })}
+            >
+              <option value="">선택하지 않음</option>
+              {INDUSTRIES.map((industry) => (
+                <option key={industry.id} value={industry.label}>
+                  {industry.label}
+                </option>
+              ))}
+            </select>
+          </label>{" "}
           <div className="interview-form-grid">
             <label>
               지원 직무
-              <input
-                className="input"
-                value={settings.role}
-                maxLength={100}
-                onChange={(e) => setSettings({ ...settings, role: e.target.value })}
-              />
-            </label>
+              <select
+                className="select"
+                value={
+                  customRoleMode || !JOB_GROUPS.some((group) => group.roles.includes(settings.role))
+                    ? "__custom__"
+                    : settings.role
+                }
+                onChange={(e) => {
+                  if (e.target.value === "__custom__") setCustomRoleMode(true);
+                  else {
+                    setCustomRoleMode(false);
+                    setSettings({ ...settings, role: e.target.value });
+                  }
+                }}
+              >
+                {JOB_GROUPS.map((group) => (
+                  <optgroup key={group.id} label={group.label}>
+                    {group.roles.map((role) => (
+                      <option key={role} value={role}>
+                        {role}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+                <option value="__custom__">직접 입력</option>
+              </select>
+              {(customRoleMode ||
+                !JOB_GROUPS.some((group) => group.roles.includes(settings.role))) && (
+                <input
+                  className="input"
+                  aria-label="지원 직무 직접 입력"
+                  value={settings.role}
+                  maxLength={100}
+                  placeholder="지원 직무를 직접 입력하세요"
+                  onChange={(e) => setSettings({ ...settings, role: e.target.value })}
+                />
+              )}
+            </label>{" "}
             <label>
               경력 수준
               <select

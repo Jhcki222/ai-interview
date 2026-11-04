@@ -3,10 +3,12 @@ import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { createClient } from "@supabase/supabase-js";
 import { getUser } from "@/lib/supabase/server";
+import { guestSigningSecret } from "./guest-secret";
 export class AIError extends Error {
   constructor(
     message: string,
     public status = 503,
+    public code?: string,
   ) {
     super(message);
   }
@@ -16,9 +18,13 @@ const hash = (value: string, secret: string) =>
 export async function consumeUsage(request: Request) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const service = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY;
-  const secret = process.env.AI_COOKIE_SECRET;
-  if (!url || !service || !secret || secret.length < 32)
-    throw new AIError("AI 사용량 제한 서비스 설정이 필요합니다.");
+  if (!url || !service) throw new AIError("AI 사용량 제한 서비스 설정이 필요합니다.");
+  let secret: string;
+  try {
+    secret = guestSigningSecret(process.env.AI_COOKIE_SECRET, service);
+  } catch {
+    throw new AIError("AI 비회원 식별 설정을 확인해 주세요.");
+  }
   const user = await getUser();
   const identities: string[] = [];
   if (user) identities.push(`user:${user.id}`);
@@ -50,13 +56,33 @@ export async function consumeUsage(request: Request) {
     if (ip) identities.push(`ip:${hash(ip, secret)}`);
   }
   const admin = createClient(url, service, {
+    global: {
+      fetch: (input, init) =>
+        fetch(input, {
+          ...init,
+          signal: AbortSignal.any([
+            ...(init?.signal ? [init.signal] : []),
+            AbortSignal.timeout(8000),
+          ]),
+        }),
+    },
     auth: { persistSession: false, autoRefreshToken: false },
   });
-  const { data, error } = await admin.rpc("consume_ai_usage", {
-    p_subjects: identities,
-    p_limit: user ? 80 : 20,
-  });
-  if (error) throw new AIError("AI 사용량을 확인할 수 없습니다. 잠시 후 다시 시도해 주세요.");
+  let data: unknown;
+  try {
+    const result = await admin.rpc("consume_ai_usage", {
+      p_subjects: identities,
+      p_limit: user ? 80 : 20,
+    });
+    if (result.error) throw new Error("Usage backend unavailable");
+    data = result.data;
+  } catch {
+    throw new AIError(
+      "AI 사용량 저장소에 연결할 수 없습니다. 관리자에게 문의해 주세요.",
+      503,
+      "USAGE_BACKEND_UNAVAILABLE",
+    );
+  }
   if (data !== true)
     throw new AIError("오늘의 AI 사용 한도에 도달했습니다. 내일 다시 이용해 주세요.", 429);
 }

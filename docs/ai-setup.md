@@ -1,66 +1,69 @@
-# AI setup and API contract
+# AI provider setup and verification
 
-AI calls use AI SDK 6 `Output.object` with the configured provider. Groq (default) uses `generateText` with structuredOutputs/strictJsonSchema enabled; OpenAI uses `streamText` with real previews. No demo/fallback answers are returned.
+The application calls real providers through AI SDK 6. It never returns demo AI answers. Provider credentials stay on the server.
 
-## Server environment
+## Environment and database
 
-- `OPENAI_API_KEY`: provider API key (server only).
-- `AI_MODEL`: an OpenAI model supporting structured output; choose an enabled model with an output budget of at least 24,000 tokens for 15-question requests.
-- `NEXT_PUBLIC_SUPABASE_URL`: project URL.
-- `SUPABASE_SERVICE_ROLE_KEY`: service key, never expose to browser.
-- `AI_COOKIE_SECRET`: random secret of at least 32 characters for signed guest cookies and IP HMAC. Rotate to invalidate guest identities.
+- `NVIDIA_API_KEY`: NVIDIA hosted NIM; fixed base `https://integrate.api.nvidia.com/v1`.
+- `GROQ_API_KEY`: Groq official API.
+- `OLLAMA_API_KEY`: Ollama Cloud; fixed OpenAI-compatible base `https://ollama.com/v1` (not a user's local machine).
+- `OPENAI_API_KEY`: optional legacy OpenAI integration; no OpenAI model is selectable until an actual model verification is recorded.
+- `AI_PROVIDER=nvidia` and `AI_MODEL=nvidia/nemotron-3-ultra-550b-a55b`: preferred startup selection. Missing/retired model settings fall back to the first verified model in that configured provider. A provider without any verified model is not selectable.
+- `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (or `SUPABASE_SECRET_KEY`), `AI_COOKIE_SECRET` (random, at least 32 characters).
 
-Apply `supabase/migrations/002_ai_usage.sql` after the member-data migration. Only service_role can execute the limiter. Requests fail closed when any AI/limiter configuration is absent or when the RPC is unavailable. Daily UTC limits are 20 requests per guest and 80 per member; on Vercel each request also consumes a hashed IP bucket. Every AI action, including failed provider attempts, consumes one request. Guest cookies are HttpOnly, SameSite=Lax, Secure in production, expire after 30 days. Outside Vercel generic client IP headers are ignored; the signed guest identity is used. For public non-Vercel deployments add a trusted ingress IP implementation before relying on guest abuse prevention. No raw IP is persisted.
+Apply SQL 001 and `supabase/migrations/002_ai_usage.sql`. AI usage is atomically accounted in PostgreSQL once per logical request; provider retries/failover do not consume extra application quotas. Guest limit 20/day; member 80/day; UTC resets. Guests use an HttpOnly signed cookie; Vercel ingress IP is HMAC-hashed and separately limited. Other forwarded IP headers are ignored. The RPC is service-role-only and locks identity buckets in stable order. Missing settings or an unavailable quota backend fail closed. `USAGE_BACKEND_UNAVAILABLE` means the service key/project/RPC permissions need checking; it does not bypass the limiter. RPC network calls have an 8 second deadline.
 
-The SQL acquires transaction advisory locks in a stable order, checks all identity buckets, then increments all buckets in one transaction. No in-memory counter is used. Usage rows contain subject keys, UTC date and request count; prune old usage rows with your database maintenance policy.
+## Models and real health verification
 
-## POST `/api/ai`
+`GET /api/ai/models` returns only configured providers, curated verified selectable models, an initial selection, discovery status and excluded-model diagnostics. NVIDIA `/v1/models` and Ollama `/api/tags` inventory are queried with a 4 second bound and 60 second cache. Inventory never expands the server allowlist or proves inference health. Client-selected provider/model pairs are validated on the server; arbitrary URLs and unknown models are rejected.
 
-Same-origin JSON only (foreign Origin rejected). Maximum request body: 200,000 characters and 220,000 declared Content-Length bytes. Summary requests are kept below 180,000 UTF-8 bytes. Request schema is `lib/ai/schemas.ts`:
+Real synthetic Korean JSON probes on 2026-11-04:
 
-- `{action:"analyze", documents, settings}`: documents 1–45,000 characters.
-- `{action:"generate", analysis, settings}`: exactly settings.count questions (5/10/15), unique IDs, full model answers and at least two answered follow-ups.
-- `{action:"evaluate", question, answer}`: each at most 8,000 characters; exactly five unique scored dimensions.
-- `{action:"followup", question, answer}`: one targeted follow-up with rationale and model answer.
-- `{action:"summary", excerpted:true, turns:[{question,answer,evaluation}]}`: 1–45 turns. The browser keeps every turn, each overall score, all five dimension scores/evidence, and the first strength/improvement. Question excerpts are at most 120 characters, answers 360 (beginning and conclusion), dimension evidence 80 and strength/improvement 80. Omission is marked `[…]`; the summary system instruction explicitly disallows assumptions about omitted text. Full original answers/evaluations remain in the UI transcript and session. The serialized UTF-8 request is measured and excerpts reduced further if JSON escaping would exceed 180,000 bytes.
+| Provider | Model | Result |
+| --- | --- | --- |
+| NVIDIA | nvidia/nemotron-3-ultra-550b-a55b | HTTP200, Korean JSON validated, 2.8s; default |
+| NVIDIA | nvidia/nemotron-3-super-120b-a12b | HTTP404; excluded |
+| NVIDIA | google/gemma-4-31b-it |45 s timeout; excluded |
+| NVIDIA | openai/gpt-oss-20b |45 s timeout; excluded |
+| Groq | openai/gpt-oss-20b /120b | HTTP200, Korean JSON validated, 0.7–0.8s |
+| Ollama | gemma4:31b / gpt-oss:20b / gpt-oss:120b / nemotron-3-super | HTTP200, Korean JSON validated, 0.5–2.0s |
 
-Settings: `{role:string,level:"신입"|"주니어"|"시니어",count:5|10|15,mode:"learn"|"chat"}`.
+A small JSON probe establishes connectivity and format support, not comparative interview quality. Every real result is independently schema-validated. See [official model and cost research](model-research.md). NVIDIA Ultra explicitly lists Korean support in its [official model card](https://build.nvidia.com/nvidia/nemotron-3-ultra-550b-a55b/modelcard). Ollama's [official compatibility documentation](https://github.com/ollama/ollama/blob/main/docs/api/openai-compatibility.mdx) defines the Cloud base. Groq's [structured-output documentation](https://console.groq.com/docs/structured-outputs) states the upstream streaming limitation.
 
-Before streaming: JSON `{error:string}` with 400/403/413/429/503 as appropriate. On success, SSE `event: progress` with `{message,chunks?}`, followed by exactly one `event: complete` with the full validated result. Failure after stream headers is `event: error` with `{message}`. Partial JSON is never returned as a completed result. The browser validates completion independently, limits response buffering, supports AbortController cancellation and a 115-second deadline. Server deadline is 110 seconds; SDK has one provider retry. UI manual retries are limited to two. Vercel deployment/function plan must permit the route's 120-second maximum duration.
+## Request, status and failure contract
 
-## Documents and sessions
+`POST /api/ai` accepts the action-specific object plus optional `selection:{provider,model}` and `allowFallback:boolean` (default true, shown as an explicit checkbox). If fallback is enabled, the same input may be sent to another configured provider; the UI states this before use. Disable it to restrict processing to the selected provider. The candidate order starts with the selected model, then the first verified model from each other configured provider.
 
-Browser-only PDF (`pdfjs-dist`, local public worker), DOCX (`mammoth` raw text) and TXT extraction. Maximum three files, 5MB each, 15,000 extracted characters each, 45,000 combined including document labels. Scanned PDFs without text need OCR before upload; no OCR service is included. Parsing failures and empty text are shown explicitly. Raw files are not uploaded or stored; extracted text is sent to the AI provider for analysis, then discarded by the UI after success. Directly entered context is limited to 12,000 characters and validated against the combined API ceiling. Reviewed analysis and interview records are stored only in this tab's sessionStorage. Starting a new interview clears that record. Refresh during an operation restores only the last stable state. Analysis is editable before generation. AI scores are estimates and do not represent hiring decisions.
+- analyze: `{action:"analyze",documents,settings}`; documents 1–45,000 characters.
+- generate: `{action:"generate",analysis,settings}`; exactly 5/10/15 complete questions as selected.
+- evaluate/followup: `{action,question,answer,history?}`; current fields each ≤8,000 characters. History is the latest ≤6 prior turns, each question ≤1,000 and answer ≤1,200 characters, with head/tail excerpts and omission markers. The current answer remains separate.
+- summary: `{action:"summary",excerpted:true,turns}`;1–45 turns, every score/dimension retained with bounded evidence. Serialized UTF8 payload stays under 180 KB even with JSON escaping. Full original transcript remains in the UI.
 
-`POST /api/me/questions` receives `{question: Question}` only on explicit Save; member auth and RLS are enforced by that route. Guests see a login prompt. Generated questions use independent native details disclosures for model answers, follow-up questions and their answers.
+Settings: role, level, count, mode, optional company/division ≤100 characters each, optional jobPosting ≤12,000, interviewType technical/project/personality/motivation/comprehensive, difficulty BASIC/INTERMEDIATE/ADVANCED. These fields explicitly guide analysis/generation without inventing company facts or experience.
 
-Local validation does not prove live provider credentials, deployed Supabase RPC concurrency or production gateway IP behavior. Verify those with actual deployment secrets before launch.
+Maximum body 220,000 bytes and 200,000 characters; a bounded reader cancels oversized chunked input before buffering it all. Same-origin validation accepts the request URL or actual Host; forwarded Host/protocol are trusted only on Vercel.
 
-Generated question validation extends the same client-safe savedQuestionSchema used by member persistence, with tighter AI-only list counts; every accepted generated Question therefore meets persistence field bounds.
+SSE events:
 
+- `status`: initializing/connecting/processing/validating/retrying/fallback/completed, message, provider/model, attempt, elapsedMs, correlationId and optional safe error code/retryAfterMs.
+- `progress`: real processing heartbeat every 8 seconds.
+- `preview`: OpenAI-only transient human-readable upstream partial text, clearly labelled unvalidated and never persisted.
+- `complete`: full schema-validated result only.
+- `error`: sanitized message/code, provider/model, elapsedMs and correlationId. No raw provider error, credentials, document or response body is logged.
 
-## Targeting and complete learning workflow
+The UI displays elapsed time, actual provider/model, retries, fallback, rate limits, timeout, missing configuration and correlation ID. Before SSE, errors use JSON `{error,code,correlationId}` with the appropriate HTTP status.
 
-Settings now include `company` and `division` (optional, 100 characters each), `jobPosting` (optional, 12,000 characters), `interviewType` (`technical`, `project`, `personality`, `motivation`, `comprehensive`), and `difficulty` (`BASIC`, `INTERMEDIATE`, `ADVANCED`). Legacy sessions default these new values. Analyze/generate prompts explicitly apply all targeting fields and use only factual requirements from the supplied posting, without inventing company facts.
+401/403 authentication/access failures are never retried on that provider.429 uses bounded Retry-After backoff; network/5xx may retry once.404/410, invalid responses and timeouts may proceed to a configured fallback when permitted. Per-attempt deadline ≤40 s; total execution ≤105 s inside an absolute 110 s request deadline and 120 s Vercel function limit. Cancellation stops subsequent retry/fallback. AI SDK built-in retries are disabled so the shared policy owns the budget.
 
-Upload supports drag/drop, additive file selection, duplicate detection and individual removal. The list reports file size and extraction status. Learning mode stores independent per-question personal answers/evaluations in this tab, supports editing with stale feedback invalidation, shows revised answers, and can start a chat interview using the existing generated list. Every evaluation card, including the final transcript, exposes the improved/revised answer. Guest Save opens a login/signup/later dialog.
+Groq uses non-streaming strict `generateText`+`Output.object`. NVIDIA/Ollama use `generateText`+`Output.json` with the complete JSON Schema in the prompt and mandatory Zod/domain validation after generation. OpenAI uses native structured streaming with an explicit no-op error logger. Non-streaming providers emit honest status/heartbeat followed by completion; token previews are never fabricated.
 
-Sessions carry an ID. `/interview/[id]` restores only the matching current-tab record; an arbitrary or missing ID shows an explicit unmatched state and never displays a different stored interview. `/interview` restores the active current-tab session; a link to its address is available in learning mode. Browser storage reads/writes/removal are guarded against disabled storage or quota exceptions. Legacy unnumbered sessions receive an ID on their next restore.
+## Documents, sessions and saving
 
-For OpenAI, SSE emits `event: preview` with `{text}`: a bounded human-readable question/analysis/answer/summary preview, shown transiently and labelled unvalidated. Previews are never persisted or accepted as completed output. Final completion still undergoes independent full-schema validation. Input is consumed through a bounded byte reader; even chunked requests are cancelled as soon as they exceed 220,000 bytes, before reading the entire body.
+Browser extraction: PDF/pdfjs with local worker, DOCX/mammoth raw text, TXT. Maximum 3 files, 5 MB each, 15,000 extracted characters each and 45,000 combined. Drag/drop, additive selection, duplicate detection, removable file list and parsing status are supported. Empty/scanned/unreadable documents are distinguished. Raw files are neither uploaded nor stored; extracted text goes to the selected provider for analysis then is discarded by the UI. PDF cancellation destroys its task; pending TXT/DOCX results are ignored after cancellation; a post-extraction guard prevents any cancelled content from reaching the server. Extraction deadline 60 s.
 
-The AI route uses the central `lib/ai/provider.ts` selection helper; provider credentials are server-only. A configured provider does not bypass the required persistent Supabase usage limiter.
+Reviewed analysis is editable. Question learning supports independent model-answer/follow-up disclosures, personal answer editing and per-question AI evaluation, then transition into a chat using the same generated list. Every evaluation exposes a revised-answer example. Prompts prohibit attributing invented experience/numbers to the candidate. AI scores are estimates, not hiring decisions.
 
-## Groq structured-output transport
+Current-tab sessionStorage contains only reviewed analysis, generated questions, answers/evaluations, chosen provider and fallback preference. Storage operations are guarded. `/interview/[id]` displays only its matching current-tab session, otherwise an explicit unmatched state. Generated IDs use a session namespace before display/save; raw model IDs are checked for duplicates first. Authenticated Save opens the company-selection dialog; guests see login/signup/later.
 
-Groq structured outputs do not support upstream response streaming ([Groq documentation](https://console.groq.com/docs/structured-outputs)). The production route therefore uses non-streaming `generateText` + `Output.object` for every Groq action, with `providerOptions.groq.structuredOutputs=true` and `strictJsonSchema=true`. While waiting, the SSE connection sends real processing status and an eight-second heartbeat, then the full schema-validated `complete` event. It does not invent token or answer previews. OpenAI continues to use upstream `streamText` and transient previews. Both branches share complete-result validation, question-count/ID checks, evaluation dimension checks, timeout/cancellation, usage accounting and user-friendly sanitized errors. The streaming branch supplies an explicit sanitized/no-op `onError` to suppress SDK default logging of provider error objects that may contain request data.
+Provider-only smoke tests do not prove database setup. The latest full `/api/ai` synthetic check reached the persistent limiter but returned `USAGE_BACKEND_UNAVAILABLE`; database/service-key verification must pass before claiming the full live route works. No quota bypass was added.
 
-Real Groq verification was run separately with a synthetic document: non-streaming strict generation returned five fully validated questions compatible with member persistence (3,682 tokens). Production `/api/ai` remains dependent on the configured Supabase limiter; a provider-only smoke test does not verify that deployment prerequisite.
-
-## Bounded conversation context
-
-Evaluate and follow-up requests accept optional `history`, containing at most six previous `{question,answer}` turns (question ≤1,000 characters and answer ≤1,200). The browser selects the latest six and retains the beginning/conclusion of longer text with `[…]` omission markers. The current `question`/`answer` remain separate and unabridged up to their existing 8,000-character limits. Even maximum JSON escaping for six excerpts plus both full current fields stays below 180,000 bytes. Follow-up excludes the current turn from history to avoid duplication; independent learning-card evaluation has an empty history. The server validates all bounds.
-
-Prompts use history as context only, evaluate the current answer, avoid repeating sufficiently answered questions, and explicitly prohibit inventing omitted context, work experience or numerical outcomes. Revised answers are labelled improvement examples; unsupported experience must be marked as requiring confirmation rather than attributed to the candidate.
-
-Document extraction creates its AbortController before reading files. Cancel immediately rejects the extraction pipeline and prevents subsequent AI transmission, including when TXT/DOCX readers finish late. PDF cancellation destroys its pdfjs loading/parsing task; every async extraction boundary checks the signal. Extraction has a 60-second deadline. Generated question and follow-up IDs are replaced only after the provider result passes complete validation and original ID uniqueness checks. IDs use the active session namespace (`ai-<session>-<question number>`), keeping distinct interviews separate for member-save deduplication; namespaced IDs stay below 100 characters.

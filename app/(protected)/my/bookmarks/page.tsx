@@ -1,4 +1,4 @@
-import { MemberWorkspace } from "@/components/auth/member-workspace";
+import { BookmarkWorkspace } from "@/components/bookmarks/bookmark-workspace";
 export default function Page() {
-  return <MemberWorkspace view="bookmarks" />;
+  return <BookmarkWorkspace />;
 }

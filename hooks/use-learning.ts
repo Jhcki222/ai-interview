@@ -6,17 +6,22 @@ import {
   restoreGuestLearning,
   importableAnswers,
   importableProgress,
+  canMutateLearning,
   type LearningData,
 } from "@/lib/learning/session";
 import type { Progress, Question } from "@/types/question";
+import { buildImportBatches } from "@/lib/learning/import";
 const empty = (): LearningData => ({ answers: {}, progress: {} });
 export function useLearning() {
   const { user, loading: authLoading } = useAuth();
   const [guest, setGuest] = useState<LearningData>(empty);
-  const [member, setMember] = useState<LearningData & { owner: string | null }>(() => ({
-    ...empty(),
-    owner: null,
-  }));
+  const [member, setMember] = useState<LearningData & { owner: string | null; hydrated: boolean }>(
+    () => ({
+      ...empty(),
+      owner: null,
+      hydrated: false,
+    }),
+  );
   const [drafts, setDrafts] = useState<{ owner: string | null; answers: Record<string, string> }>({
     owner: null,
     answers: {},
@@ -30,6 +35,7 @@ export function useLearning() {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [reloadToken, setReloadToken] = useState(0);
   useEffect(() => {
     try {
       setGuest(restoreGuestLearning(sessionStorage.getItem(GUEST_LEARNING_KEY)));
@@ -51,8 +57,14 @@ export function useLearning() {
     identityRef.current = identity;
     for (const request of mutations.current) request.abort();
     mutations.current.clear();
-    setMember({ ...empty(), owner: identity });
-    setDrafts({ owner: identity, answers: {} });
+    setMember((previous) =>
+      previous.owner === identity
+        ? { ...previous, hydrated: false }
+        : { ...empty(), owner: identity, hydrated: false },
+    );
+    setDrafts((previous) =>
+      previous.owner === identity ? previous : { owner: identity, answers: {} },
+    );
     setError("");
     setNotice("");
     setBusy(null);
@@ -69,6 +81,7 @@ export function useLearning() {
         if (!controller.signal.aborted && identityRef.current === identity)
           setMember({
             owner: identity,
+            hydrated: true,
             answers: data.answers ?? {},
             progress: data.progress ?? {},
           });
@@ -85,7 +98,7 @@ export function useLearning() {
       mutations.current.clear();
       identityRef.current = null;
     };
-  }, [user?.id]);
+  }, [user?.id, reloadToken]);
   async function request(url: string, body: unknown, method = "POST", owner = identity) {
     if (!owner || identityRef.current !== owner)
       throw new DOMException("Account changed", "AbortError");
@@ -107,6 +120,8 @@ export function useLearning() {
     }
   }
   const activeMember = member.owner === identity ? member : empty();
+  const memberReady = canMutateLearning(identity, member.owner, member.hydrated);
+  const loaded = ready && !authLoading && !loading && (!user || memberReady);
   const data = user ? activeMember : guest;
   const answers = { ...data.answers, ...(user && drafts.owner === identity ? drafts.answers : {}) };
   function editAnswer(key: string, value: string) {
@@ -119,7 +134,7 @@ export function useLearning() {
     else setGuest((previous) => ({ ...previous, answers: { ...previous.answers, [key]: value } }));
   }
   async function saveAnswer(key: string) {
-    if (!user) return false;
+    if (!user || !loaded) return false;
     setBusy(key);
     setError("");
     try {
@@ -145,6 +160,7 @@ export function useLearning() {
       });
       return;
     }
+    if (!loaded) return;
     setBusy(key);
     setError("");
     try {
@@ -168,6 +184,7 @@ export function useLearning() {
     }
   }
   async function updateProgress(key: string, patch: Partial<Progress>) {
+    if (user && !loaded) return;
     const current = data.progress[key] ?? { status: "NOT_STARTED" as const, bookmarked: false };
     const next = { ...current, ...patch };
     if (!user) {
@@ -178,7 +195,7 @@ export function useLearning() {
     setBusy(key);
     setError("");
     try {
-      await request("/api/me/progress", { question_key: key, ...next });
+      await request("/api/me/progress", { question_key: key, ...patch });
       setMember((previous) => ({ ...previous, progress: { ...previous.progress, [key]: next } }));
       setNotice("학습 상태를 저장했어요.");
     } catch (e) {
@@ -208,36 +225,37 @@ export function useLearning() {
       if (identityRef.current === identity) setBusy(null);
     }
   }
-  const importable = user ? importableAnswers(guest.answers, activeMember.answers) : [];
-  const progressToImport = user ? importableProgress(guest.progress, activeMember.progress) : [];
+  const importable = user && loaded ? importableAnswers(guest.answers, activeMember.answers) : [];
+  const progressToImport =
+    user && loaded ? importableProgress(guest.progress, activeMember.progress) : [];
   const importableCount = new Set([
     ...importable.map(([key]) => key),
     ...progressToImport.map(([key]) => key),
   ]).size;
   async function importGuest() {
-    if (!user) return;
+    if (!user || !loaded) return;
     setBusy("import");
     setError("");
     try {
-      for (const [key, text] of importable) {
-        await request("/api/me/answers", { question_key: key, answer_text: text });
-        setMember((previous) => ({ ...previous, answers: { ...previous.answers, [key]: text } }));
-        setGuest((previous) => {
-          const next = { ...previous.answers };
-          delete next[key];
-          return { ...previous, answers: next };
+      const batches = buildImportBatches(
+        Object.fromEntries(importable),
+        Object.fromEntries(progressToImport),
+      );
+      for (const batch of batches) {
+        const result = await request("/api/me/import", batch);
+        const actual = await request("/api/me/state", undefined, "GET");
+        setMember({
+          owner: identity,
+          hydrated: true,
+          answers: actual.answers ?? {},
+          progress: actual.progress ?? {},
         });
-      }
-      for (const [key, progress] of progressToImport) {
-        await request("/api/me/progress", { question_key: key, ...progress });
-        setMember((previous) => ({
-          ...previous,
-          progress: { ...previous.progress, [key]: progress },
-        }));
         setGuest((previous) => {
-          const next = { ...previous.progress };
-          delete next[key];
-          return { ...previous, progress: next };
+          const answers = { ...previous.answers },
+            progress = { ...previous.progress };
+          for (const key of result.insertedAnswers ?? []) delete answers[key];
+          for (const key of result.insertedProgress ?? []) delete progress[key];
+          return { answers, progress };
         });
       }
       setNotice("임시 답변과 학습 기록을 계정으로 가져왔어요.");
@@ -253,7 +271,8 @@ export function useLearning() {
   return {
     answers,
     progress: data.progress,
-    loaded: ready && !authLoading && !loading,
+    loaded,
+    reload: () => setReloadToken((value) => value + 1),
     busy,
     error,
     notice,
