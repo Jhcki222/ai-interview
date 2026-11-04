@@ -36,7 +36,10 @@ export function AuthForm({ mode, next = "/questions" }: { mode: AuthMode; next?:
   };
 
   async function submit({ username, password, nickname }: AuthValues) {
-    if (!client) return;
+    if (!client) {
+      setMessage("인증 서버 설정(Supabase 환경변수)이 로드되지 않았습니다. Vercel 환경변수(NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY)를 확인해 주세요.");
+      return;
+    }
     setMessage("");
     try {
       const destination = safeRedirect(next);
@@ -49,7 +52,14 @@ export function AuthForm({ mode, next = "/questions" }: { mode: AuthMode; next?:
           password: supabasePassword,
         });
         if (error) {
-          setMessage("아이디 또는 비밀번호(숫자 4자리)를 확인해 주세요.");
+          const errMsg = error.message || "";
+          if (errMsg.includes("Email not confirmed") || (error as any).code === "email_not_confirmed") {
+            setMessage("Supabase 프로젝트 설정에서 'Confirm email'이 켜져 있습니다. Supabase 대시보드 > Authentication > Providers > Email에서 'Confirm email'을 OFF로 변경해야 아이디로 즉시 로그인할 수 있습니다.");
+          } else if (errMsg.includes("Invalid login credentials")) {
+            setMessage("등록되지 않은 아이디이거나 비밀번호(숫자 4자리)가 일치하지 않습니다. 회원가입을 먼저 진행해 주세요.");
+          } else {
+            setMessage(errMsg || "아이디 또는 비밀번호(숫자 4자리)를 확인해 주세요.");
+          }
           return;
         }
         router.push(destination);
@@ -73,7 +83,7 @@ export function AuthForm({ mode, next = "/questions" }: { mode: AuthMode; next?:
           ) {
             setMessage("이미 사용 중인 아이디입니다.");
           } else {
-            setMessage("가입하지 못했습니다. 입력 내용을 확인해 주세요.");
+            setMessage(error.message || "가입하지 못했습니다. 입력 내용을 확인해 주세요.");
           }
           return;
         }
@@ -90,6 +100,10 @@ export function AuthForm({ mode, next = "/questions" }: { mode: AuthMode; next?:
         if (!signInErr) {
           router.push(destination);
           router.refresh();
+          return;
+        }
+        if (signInErr.message?.includes("Email not confirmed") || (signInErr as any).code === "email_not_confirmed") {
+          setMessage("가입은 완료되었으나 Supabase의 'Confirm email'이 켜져 있어 로그인이 제한됩니다. Supabase 대시보드 > Authentication > Providers > Email에서 'Confirm email'을 OFF로 변경해 주세요.");
           return;
         }
         setMessage("가입이 완료되었습니다. 로그인해 주세요.");
@@ -155,7 +169,11 @@ export function AuthForm({ mode, next = "/questions" }: { mode: AuthMode; next?:
       <p className="eyebrow">나만의 면접 준비</p>
       <h1 className="page-heading">{titles[mode]}</h1>
       <p className="muted">답변과 학습 기록을 안전하게 이어가세요.</p>
-      {!client && <p role="status">회원 기능을 사용하려면 Supabase 연결 설정이 필요합니다.</p>}
+      {!client && (
+        <div style={{ marginTop: 12, padding: 12, background: "rgba(239, 68, 68, 0.1)", color: "var(--color-destructive, #dc414e)", border: "1px solid rgba(239, 68, 68, 0.3)", borderRadius: 8, fontSize: 13, lineHeight: 1.5 }}>
+          ⚠️ Supabase 환경변수가 로드되지 않았습니다. Vercel 대시보드 Settings → Environment Variables에 <strong>NEXT_PUBLIC_SUPABASE_URL</strong>과 <strong>NEXT_PUBLIC_SUPABASE_ANON_KEY</strong>가 등록되어 있는지 확인해 주세요.
+        </div>
+      )}
       <form
         onSubmit={handleSubmit(submit)}
         noValidate

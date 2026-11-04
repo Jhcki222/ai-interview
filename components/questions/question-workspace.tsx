@@ -4,16 +4,20 @@ import Link from "next/link";
 import {
   ArrowLeft,
   ArrowRight,
-  BookOpen,
   Check,
   ChevronDown,
   ListFilter,
-  Search,
   SearchX,
   ShieldCheck,
-  SlidersHorizontal,
   X,
 } from "lucide-react";
+import { motion } from "motion/react";
+import {
+  Book01Icon,
+  Search01Icon,
+  SlidersHorizontalIcon,
+} from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { Button } from "@/components/ui/button";
 import {
@@ -122,7 +126,7 @@ export function QuestionWorkspace({
   return (
     <div className="questions-page">
       <div className="eyebrow">
-        <BookOpen size={13} /> BUILD YOUR KNOWLEDGE
+        <HugeiconsIcon icon={Book01Icon} size={14} /> BUILD YOUR KNOWLEDGE
       </div>
       <div className="questions-page-title">
         <div>
@@ -166,7 +170,7 @@ export function QuestionWorkspace({
                 onClick={() => chooseCategory("")}
               >
                 <span className="category-symbol">
-                  <BookOpen size={15} />
+                  <HugeiconsIcon icon={Book01Icon} size={15} />
                 </span>
                 전체 질문<span>{questions.length}</span>
               </button>
@@ -228,7 +232,7 @@ export function QuestionWorkspace({
           {!detail && (
             <>
               <div className="question-searchbar">
-                <Search size={18} />
+                <HugeiconsIcon icon={Search01Icon} size={18} />
                 <label className="sr-only" htmlFor="question-search">
                   질문과 키워드 검색
                 </label>
@@ -284,7 +288,7 @@ export function QuestionWorkspace({
                     onClick={() => setFiltersOpen(!filtersOpen)}
                     aria-expanded={filtersOpen}
                   >
-                    <SlidersHorizontal size={13} />
+                    <HugeiconsIcon icon={SlidersHorizontalIcon} size={14} />
                     학습 필터
                   </button>
                 </div>
@@ -367,41 +371,47 @@ export function QuestionWorkspace({
               const key = `base:${q.id}`;
               const busy = learning.busy === key;
               return (
-                <QuestionCard
+                <motion.div
                   key={q.id}
-                  question={q}
-                  index={(page - 1) * pageSize + index}
-                  answer={learning.answers[key] ?? ""}
-                  progress={learning.progress[key]}
-                  busy={busy}
-                  detail={!!detail}
-                  onEdit={(value) => learning.editAnswer(key, value)}
-                  onSave={() => {
-                    if (!user) {
-                      setAuthOpen(true);
-                      return;
-                    }
-                    void learning.saveAnswer(key);
-                  }}
-                  onDelete={() => void learning.deleteAnswer(key)}
-                  onProgress={(patch) => void learning.updateProgress(key, patch)}
-                  onBookmark={() => {
-                    if (!user) {
-                      setAuthOpen(true);
-                      return;
-                    }
-                    void learning.updateProgress(key, {
-                      bookmarked: !learning.progress[key]?.bookmarked,
-                    });
-                  }}
-                  onSaveQuestion={() => {
-                    if (!user) {
-                      setAuthOpen(true);
-                      return;
-                    }
-                    void learning.saveQuestion(q);
-                  }}
-                />
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.18, delay: Math.min(index * 0.02, 0.2) }}
+                >
+                  <QuestionCard
+                    question={q}
+                    index={(page - 1) * pageSize + index}
+                    answer={learning.answers[key] ?? ""}
+                    progress={learning.progress[key]}
+                    busy={busy}
+                    detail={!!detail}
+                    onEdit={(value) => learning.editAnswer(key, value)}
+                    onSave={() => {
+                      if (!user) {
+                        setAuthOpen(true);
+                        return;
+                      }
+                      void learning.saveAnswer(key);
+                    }}
+                    onDelete={() => void learning.deleteAnswer(key)}
+                    onProgress={(patch) => void learning.updateProgress(key, patch)}
+                    onBookmark={() => {
+                      if (!user) {
+                        setAuthOpen(true);
+                        return;
+                      }
+                      void learning.updateProgress(key, {
+                        bookmarked: !learning.progress[key]?.bookmarked,
+                      });
+                    }}
+                    onSaveQuestion={() => {
+                      if (!user) {
+                        setAuthOpen(true);
+                        return;
+                      }
+                      void learning.saveQuestion(q);
+                    }}
+                  />
+                </motion.div>
               );
             })}
           </div>
@@ -458,7 +468,7 @@ export function QuestionWorkspace({
         <DialogContent>
           <DialogHeader>
             <span className="login-dialog-icon">
-              <BookOpen size={25} />
+              <HugeiconsIcon icon={Book01Icon} size={25} />
             </span>
             <DialogTitle>배움을 나만의 기록으로 남겨요.</DialogTitle>
             <DialogDescription>

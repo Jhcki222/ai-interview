@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { categories, questions } from "@/lib/questions";
+import { TopicCarousel } from "@/components/home/topic-carousel";
 const categoryIcons = [Cpu, Code2, BrainCircuit, MessagesSquare, UserRound, Layers3, GitBranch];
 export default function HomePage() {
   const featured = ["CS", "BACKEND", "AI"]
@@ -171,13 +172,14 @@ export default function HomePage() {
           <div>
             <h2>
               어떤 주제를 준비할까요?
-              <span className="section-caption">관심 있는 분야부터 가볍게 시작해 보세요.</span>
+              <span className="section-caption">원하는 주제를 돌려보거나 아래에서 바로 선택하세요.</span>
             </h2>
           </div>
           <Link className="text-link" href="/questions">
             전체 질문 보기 <ArrowUpRight size={15} />
           </Link>
         </div>
+        <TopicCarousel />
         <div className="category-grid">
           {categories.map((category, index) => {
             const Icon = categoryIcons[index] || BookOpen;

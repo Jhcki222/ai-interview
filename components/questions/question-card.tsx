@@ -1,19 +1,23 @@
 "use client";
-import { useState } from "react";
+import { memo, useState } from "react";
 import Link from "next/link";
+import { AnimatePresence, motion } from "motion/react";
 import {
-  Bookmark,
-  BookmarkCheck,
   ChevronDown,
-  FilePenLine,
-  FolderPlus,
-  Lightbulb,
-  Link2,
   Loader2,
-  MessageCircleMore,
-  Save,
-  Trash2,
 } from "lucide-react";
+import {
+  BookmarkAdd02Icon,
+  BookmarkCheck02Icon,
+  BulbIcon,
+  Edit02Icon,
+  FolderAddIcon,
+  Link01Icon,
+  MessageMultiple02Icon,
+  FloppyDiskIcon,
+  Delete02Icon,
+} from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from "@hugeicons/react";
 import type { LearningStatus, Progress, Question } from "@/types/question";
 import { difficultyLabels, importanceLabels } from "@/lib/questions";
 import { Button } from "@/components/ui/button";
@@ -38,7 +42,7 @@ interface Props {
   onBookmark: () => void;
   onSaveQuestion: () => void;
 }
-export function QuestionCard({
+export const QuestionCard = memo(function QuestionCard({
   question: q,
   index,
   answer,
@@ -91,7 +95,7 @@ export function QuestionCard({
           disabled={busy}
           onClick={onBookmark}
         >
-          {progress?.bookmarked ? <BookmarkCheck size={18} /> : <Bookmark size={18} />}
+          {progress?.bookmarked ? <HugeiconsIcon icon={BookmarkCheck02Icon} size={18} /> : <HugeiconsIcon icon={BookmarkAdd02Icon} size={18} />}
         </Button>
       </div>
       <div className="question-actions">
@@ -101,7 +105,7 @@ export function QuestionCard({
           aria-controls={`${q.id}-model`}
           onClick={() => setModelOpen(!modelOpen)}
         >
-          <Lightbulb size={14} /> 모범답안 <ChevronDown size={12} />
+          <HugeiconsIcon icon={BulbIcon} size={14} /> 모범답안 <ChevronDown size={12} />
         </button>
         <button
           className={cn("question-action", followOpen && "is-expanded")}
@@ -109,7 +113,7 @@ export function QuestionCard({
           aria-controls={`${q.id}-follow`}
           onClick={() => setFollowOpen(!followOpen)}
         >
-          <MessageCircleMore size={14} /> 꼬리질문{" "}
+          <HugeiconsIcon icon={MessageMultiple02Icon} size={14} /> 꼬리질문{" "}
           <span className="follow-count">{q.followUps.length}</span>
           <ChevronDown size={12} />
         </button>
@@ -119,7 +123,7 @@ export function QuestionCard({
           aria-controls={`${q.id}-editor`}
           onClick={() => setEditorOpen(!editorOpen)}
         >
-          <FilePenLine size={14} /> 내 답변 {answer && <span className="draft-dot" />}
+          <HugeiconsIcon icon={Edit02Icon} size={14} /> 내 답변 {answer && <span className="draft-dot" />}
         </button>
         <div className="question-actions-right">
           <label className="sr-only" htmlFor={`${q.id}-status`}>
@@ -140,11 +144,20 @@ export function QuestionCard({
           </select>
         </div>
       </div>
-      {modelOpen && (
-        <div className="model-answer-section" id={`${q.id}-model`}>
+      <AnimatePresence initial={false}>
+        {modelOpen && (
+          <motion.div
+            className="model-answer-section"
+            id={`${q.id}-model`}
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: "easeInOut" }}
+            style={{ overflow: "hidden" }}
+          >
           <div className="answer-summary">
             <span>
-              <Lightbulb size={16} />
+              <HugeiconsIcon icon={BulbIcon} size={16} />
             </span>
             <div>
               <h3>핵심 요약</h3>
@@ -169,15 +182,25 @@ export function QuestionCard({
           <div className="answer-end">
             <span>{q.modelAnswer.keywords.map((k) => `#${k}`).join("  ")}</span>
             <Button variant="ghost" size="sm" onClick={onSaveQuestion} disabled={busy}>
-              <FolderPlus size={14} />내 질문에 저장
+              <HugeiconsIcon icon={FolderAddIcon} size={14} />내 질문에 저장
             </Button>
           </div>
-        </div>
-      )}
-      {followOpen && (
-        <div className="follow-up-section" id={`${q.id}-follow`}>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <AnimatePresence initial={false}>
+        {followOpen && (
+          <motion.div
+            className="follow-up-section"
+            id={`${q.id}-follow`}
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: "easeInOut" }}
+            style={{ overflow: "hidden" }}
+          >
           <p className="follow-up-heading">
-            <Link2 size={14} />한 단계 더 생각해 볼까요?
+            <HugeiconsIcon icon={Link01Icon} size={14} />한 단계 더 생각해 볼까요?
           </p>
           {q.followUps.map((follow, i) => (
             <details key={follow.id} className="follow-up">
@@ -189,10 +212,20 @@ export function QuestionCard({
               <p>{follow.modelAnswer}</p>
             </details>
           ))}
-        </div>
+        </motion.div>
       )}
-      {editorOpen && (
-        <div className="answer-editor" id={`${q.id}-editor`}>
+      </AnimatePresence>
+      <AnimatePresence initial={false}>
+        {editorOpen && (
+          <motion.div
+            className="answer-editor"
+            id={`${q.id}-editor`}
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: "easeInOut" }}
+            style={{ overflow: "hidden" }}
+          >
           <div className="editor-heading">
             <label htmlFor={`${q.id}-answer`}>나의 언어로 정리하는 답변</label>
             <span>최대 20,000자</span>
@@ -216,12 +249,12 @@ export function QuestionCard({
                   disabled={busy}
                   onClick={() => setDeleteOpen(!deleteOpen)}
                 >
-                  <Trash2 size={14} />
+                  <HugeiconsIcon icon={Delete02Icon} size={14} />
                   삭제
                 </Button>
               )}
               <Button size="sm" onClick={onSave} disabled={busy || !answer.trim()}>
-                {busy ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}답변
+                {busy ? <Loader2 size={14} className="animate-spin" /> : <HugeiconsIcon icon={FloppyDiskIcon} size={14} />}답변
                 저장
               </Button>
             </div>
@@ -244,8 +277,9 @@ export function QuestionCard({
               </Button>
             </div>
           )}
-        </div>
+        </motion.div>
       )}
+      </AnimatePresence>
     </article>
   );
-}
+});

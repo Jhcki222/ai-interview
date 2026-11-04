@@ -663,7 +663,8 @@
 }
 .detail-layout {
   grid-template-columns: 1fr;
-  max-width: 950px;
+  max-width: 1200px;
+  width: 100%;
 }
 .question-card-detail .question-card-heading {
   padding: 29px 26px 23px;
