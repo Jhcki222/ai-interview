@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { member, readBody, invalid, dbError } from "@/lib/auth/api";
+import { emailToUsername } from "@/lib/auth/forms";
+
 export async function GET(request: Request) {
   const auth = await member(request);
   if (auth.error) return auth.error;
@@ -13,9 +15,11 @@ export async function GET(request: Request) {
     ? dbError()
     : NextResponse.json({
         nickname: data?.nickname ?? auth.user.user_metadata.nickname ?? "",
+        username: auth.user.user_metadata.username ?? emailToUsername(auth.user.email),
         email: auth.user.email,
       });
 }
+
 export async function PATCH(request: Request) {
   const auth = await member(request, true);
   if (auth.error) return auth.error;

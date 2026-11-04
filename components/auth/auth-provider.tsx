@@ -2,7 +2,9 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { readInitialAuthUser } from "@/lib/auth/session";
-type AuthUser = { id: string; email?: string; nickname?: string };
+import { emailToUsername } from "@/lib/auth/forms";
+
+export type AuthUser = { id: string; email?: string; username?: string; nickname?: string };
 type Auth = {
   user: AuthUser | null;
   configured: boolean;
@@ -15,6 +17,7 @@ const Context = createContext<Auth>({
   loading: true,
   signOut: async () => {},
 });
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [client] = useState(() => createClient());
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -35,6 +38,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           ? {
               id: u.id,
               email: u.email,
+              username:
+                typeof u.user_metadata?.username === "string"
+                  ? u.user_metadata.username
+                  : emailToUsername(u.email),
               nickname:
                 typeof u.user_metadata?.nickname === "string"
                   ? u.user_metadata.nickname

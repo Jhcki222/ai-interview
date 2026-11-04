@@ -22,7 +22,7 @@ http://localhost:3000 을 엽니다. 질문 학습은 외부 서비스 없이 �
 1. Supabase 프로젝트를 준비하고 `.env.local`에 프로젝트 URL, 공개 anon 키와 서버 전용 service role 키를 설정합니다.
 2. SQL Editor에서 `supabase/migrations/001_core.sql`, `002_ai_usage.sql` 순서로 실행합니다. 또는 Supabase CLI로 프로젝트에 연결 후 `supabase db push`를 사용합니다.
 3. Authentication의 Site URL과 허용 Redirect URLs에 로컬/배포 도메인의 `/auth/callback`을 등록합니다. 개발 도메인 `http://localhost:3000/auth/callback`과 필요하면 `http://127.0.0.1:3000/auth/callback`을 추가합니다.
-4. 이메일 확인 정책, SMTP, 로그인/회원가입 요청 제한을 설정합니다. Supabase 내장 Auth 요청 제한과 운영에 적합한 CAPTCHA를 검토합니다.
+4. 회원 계정은 간편한 아이디와 숫자 4자리 비밀번호를 사용합니다. Supabase Authentication의 Email Provider 설정에서 "Confirm email"을 비활성화(Off)하면 가입 즉시 별도 이메일 인증 절차 없이 바로 로그인 및 세션이 유지됩니다.
 5. 최소 32자 무작위 `AI_COOKIE_SECRET`을 설정합니다. 예: `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"`로 생성한 값을 로컬 환경파일에 직접 입력합니다.
 
 회원 데이터는 RLS로 격리하며 모든 Next.js 회원 API는 서버에서 사용자를 다시 검증합니다. 서비스 역할 키는 AI 사용량 RPC 호출에만 사용합니다. 자세한 계약은 [인증 설정](docs/auth-setup.md)을 참고하세요.
@@ -57,7 +57,7 @@ AI 호출은 Supabase의 원자적 UTC 일일 한도로 제어합니다. 비회�
 - `/`: 홈과 추천 질문
 - `/questions`, `/questions/[id]`: 검색, 필터, 모범답안, 꼬리질문, 개인 답변
 - `/interview`, `/interview/[id]`: 문서 기반 질문 학습과 실전 대화
-- `/login`, `/signup`, `/reset-password`: 인증
+- `/login`, `/signup`, `/reset-password`: 인증 (아이디와 숫자 4자리 비밀번호)
 - `/my/questions`, `/my/answers`, `/my/bookmarks`, `/my/progress`: 회원 라이브러리
 - `/settings`: 프로필과 계정 설정
 

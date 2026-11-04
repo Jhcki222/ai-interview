@@ -12,6 +12,7 @@ export function SettingsForm() {
   const [profile, setProfile] = useState<{
     ownerId: string;
     nickname: string;
+    username: string;
     email: string;
   } | null>(null);
   const [nickname, setNickname] = useState("");
@@ -27,7 +28,12 @@ export function SettingsForm() {
         const data = await response.json();
         if (!response.ok) throw new Error(data.error);
         if (!active) return;
-        setProfile({ ownerId, nickname: data.nickname, email: data.email });
+        setProfile({
+          ownerId,
+          nickname: data.nickname,
+          username: data.username || user?.username || "",
+          email: data.email,
+        });
         setNickname(data.nickname);
       })
       .catch(() => {
@@ -40,7 +46,7 @@ export function SettingsForm() {
     return () => {
       active = false;
     };
-  }, [ownerId, loading]);
+  }, [ownerId, loading, user?.username]);
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (!ownerId || owner.current !== ownerId) return;
@@ -89,8 +95,15 @@ export function SettingsForm() {
     <section className="member-settings" style={{ maxWidth: 640 }}>
       <p className="eyebrow">ACCOUNT</p>
       <h1 className="page-heading">계정 설정</h1>
-      <div className="panel" style={{ padding: 24 }}>
-        <p className="muted">{profile?.email}</p>
+      <div className="panel" style={{ padding: 24, marginTop: 16 }}>
+        <div style={{ marginBottom: 20 }}>
+          <p className="muted" style={{ fontSize: 13, marginBottom: 4 }}>
+            아이디
+          </p>
+          <p style={{ fontWeight: 600, fontSize: 16 }}>
+            {profile?.username || user?.username || "회원"}
+          </p>
+        </div>
         <form onSubmit={submit} style={{ display: "grid", gap: 16 }}>
           <label>
             닉네임
@@ -107,8 +120,23 @@ export function SettingsForm() {
             프로필 저장
           </button>
         </form>
-        <p role="status">{feedback}</p>
-        <Link href="/reset-password">비밀번호 재설정 이메일 받기</Link>
+        {feedback && (
+          <p role="status" style={{ marginTop: 12, fontSize: 13, color: "var(--primary)" }}>
+            {feedback}
+          </p>
+        )}
+        <hr style={{ margin: "24px 0" }} />
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div>
+            <p style={{ fontWeight: 600, fontSize: 14 }}>비밀번호 변경</p>
+            <p className="muted" style={{ fontSize: 13 }}>
+              숫자 4자리 비밀번호를 언제든지 변경할 수 있습니다.
+            </p>
+          </div>
+          <Link className="btn btn-secondary" href="/auth/update-password">
+            비밀번호 변경
+          </Link>
+        </div>
         <hr style={{ margin: "24px 0" }} />
         <button
           className="btn btn-secondary"
