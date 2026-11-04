@@ -3,7 +3,8 @@ import { useState, type FormEvent } from "react";
 import { categories } from "@/lib/questions";
 import { savedQuestionSchema } from "@/lib/auth/validation";
 import type { SavedQuestionRecord } from "@/lib/auth/member-learning";
-import type { Question } from "@/types/question";
+import type { CategoryId, Question } from "@/types/question";
+import { isCompactManualQuestion, updateCompactQuestion } from "./compact-question";
 import type { CompanyCollection } from "@/types/company";
 
 export function SavedQuestionEditor({
@@ -27,6 +28,17 @@ export function SavedQuestionEditor({
     record.question.followUps.map((item) => ({ ...item })),
   );
   const [error, setError] = useState("");
+  if (isCompactManualQuestion(record.question)) {
+    return (
+      <CompactSavedQuestionEditor
+        record={record}
+        companies={companies}
+        busy={busy}
+        onSave={onSave}
+        onCancel={onCancel}
+      />
+    );
+  }
   function updateFollowup(index: number, field: "question" | "modelAnswer", value: string) {
     setFollowUps((items) =>
       items.map((item, i) => (i === index ? { ...item, [field]: value } : item)),
@@ -235,6 +247,133 @@ export function SavedQuestionEditor({
           변경 저장
         </button>
         <button type="button" className="btn btn-secondary" disabled={busy} onClick={onCancel}>
+          취소
+        </button>
+      </div>
+    </form>
+  );
+}
+
+/** Keep compact questions editable with the same four inputs used at creation. */
+function CompactSavedQuestionEditor({
+  record,
+  companies,
+  busy,
+  onSave,
+  onCancel,
+}: {
+  record: SavedQuestionRecord;
+  companies: CompanyCollection[];
+  busy: boolean;
+  onSave: (payload: {
+    question: Question;
+    note: string;
+    company_id: string | null;
+  }) => Promise<void>;
+  onCancel: () => void;
+}) {
+  const [error, setError] = useState("");
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (busy) return;
+    const data = new FormData(event.currentTarget);
+    const value = (field: string) => String(data.get(field) ?? "").trim();
+    const question = value("question");
+    const answer = value("answer");
+    const category = value("category");
+
+    if (!question || !answer || !categories.some((item) => item.id === category)) {
+      setError("카테고리, 질문, 답변을 확인해 주세요.");
+      return;
+    }
+    const parsed = savedQuestionSchema.safeParse(
+      updateCompactQuestion(record.question, category as CategoryId, question, answer),
+    );
+    if (!parsed.success) {
+      setError("질문은 5,000자, 답변은 10,000자 이내로 입력해 주세요.");
+      return;
+    }
+    setError("");
+    await onSave({
+      question: parsed.data,
+      note: record.note,
+      company_id: value("company_id") || null,
+    });
+  }
+
+  return (
+    <form
+      onSubmit={submit}
+      className="saved-question-editor"
+      style={{ display: "grid", gap: 16 }}
+    >
+      <h2>내 질문 수정하기</h2>
+      <div className="member-form-grid">
+        <label>
+          회사
+          <select
+            className="select"
+            name="company_id"
+            defaultValue={record.company_id ?? ""}
+            disabled={busy}
+          >
+            <option value="">미분류</option>
+            {companies.map((company) => (
+              <option key={company.id} value={company.id}>
+                {company.name}{company.position ? ` · ${company.position}` : ""}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          카테고리
+          <select
+            className="select"
+            name="category"
+            defaultValue={record.question.category}
+            disabled={busy}
+            required
+          >
+            {categories.map((item) => (
+              <option value={item.id} key={item.id}>{item.name}</option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <label>
+        질문
+        <textarea
+          name="question"
+          className="textarea"
+          defaultValue={record.question.question}
+          rows={3}
+          maxLength={5000}
+          required
+          disabled={busy}
+        />
+      </label>
+      <label>
+        답변
+        <textarea
+          name="answer"
+          className="textarea"
+          defaultValue={record.question.modelAnswer.interviewAnswer}
+          rows={6}
+          maxLength={10000}
+          required
+          disabled={busy}
+        />
+      </label>
+      {error && <p className="company-error" role="alert">{error}</p>}
+      <div style={{ display: "flex", gap: 8 }}>
+        <button className="btn btn-primary" disabled={busy}>변경 저장</button>
+        <button
+          type="button"
+          className="btn btn-secondary"
+          disabled={busy}
+          onClick={onCancel}
+        >
           취소
         </button>
       </div>

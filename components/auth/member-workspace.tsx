@@ -10,6 +10,7 @@ import {
   type MemberLearningState,
 } from "@/lib/auth/member-learning";
 import { CreateQuestionForm } from "./create-question-form";
+import { isCompactManualQuestion } from "./compact-question";
 import { SavedQuestionControls } from "./saved-question-controls";
 import { SavedQuestionEditor } from "./saved-question-editor";
 import { LearningDashboard } from "./learning-dashboard";
@@ -382,8 +383,8 @@ export function MemberWorkspace({
               ) : (
                 <>
                   <small className="muted">
-                    {categories.find((item) => item.id === row.question.category)?.name} ·{" "}
-                    {row.question.topic}
+                    {categories.find((item) => item.id === row.question.category)?.name}
+                    {!isCompactManualQuestion(row.question) && ` · ${row.question.topic}`}
                   </small>
                   <h2>{row.question.question}</h2>
                   <SavedModelAnswer question={row.question} />
@@ -422,7 +423,7 @@ export function MemberWorkspace({
                       disabled={busy}
                       onClick={() => setEditing(row.id)}
                     >
-                      질문·답안·메모 편집
+                      {isCompactManualQuestion(row.question) ? "질문·답변 수정" : "질문·답안·메모 편집"}
                     </button>
                     <button
                       className="btn btn-secondary"
@@ -567,6 +568,14 @@ export function MemberWorkspace({
 }
 
 function SavedModelAnswer({ question }: { question: Question }) {
+  if (isCompactManualQuestion(question)) {
+    return (
+      <details>
+        <summary>답변 보기</summary>
+        <p style={{ whiteSpace: "pre-wrap" }}>{question.modelAnswer.interviewAnswer}</p>
+      </details>
+    );
+  }
   return (
     <div>
       <details>
