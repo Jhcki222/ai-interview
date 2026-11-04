@@ -33,6 +33,7 @@ import "./interview.css";
 import { INDUSTRIES, JOB_GROUPS } from "@/lib/interview/job-catalog";
 import { ModelPicker } from "./model-picker";
 import { QuestionCompanyDialog } from "@/components/auth/question-company-dialog";
+import { SpeechInput } from "@/components/ui/speech-input";
 import type { Selection } from "@/lib/ai/catalog";
 import type { AIStatus } from "@/lib/ai/reliability";
 const initialSettings: Settings = {
@@ -387,6 +388,28 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
       return;
     }
     setQuestionToSave(question);
+  }
+  function saveCurrentQuestion() {
+    const question = questions[index];
+    if (!question) return;
+    if (!followup) {
+      void save(question);
+      return;
+    }
+    const answer = followup.modelAnswer;
+    void save({
+      ...question,
+      id: `${question.id.slice(0, 85)}-followup-${followupCount}`.slice(0, 100),
+      question: followup.question,
+      modelAnswer: {
+        ...question.modelAnswer,
+        summary: answer.slice(0, 160),
+        interviewAnswer: answer.slice(0, 1000),
+        detailedExplanation: answer.slice(0, 1500),
+        example: answer.slice(0, 1000),
+      },
+      source: { type: "AI 면접 꼬리질문", evidence: followup.reason },
+    });
   }
   function addFiles(incoming: File[]) {
     if (busy) return;
@@ -1018,6 +1041,9 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
                 {followup ? " · 꼬리질문" : ""}
               </p>
               <h2>{currentQuestion}</h2>
+              <button className="btn btn-secondary" disabled={busy} onClick={saveCurrentQuestion}>
+                기업 질문에 저장
+              </button>
               {followup && <p className="muted">{followup.reason}</p>}
               <div className="interview-progress-track">
                 <span style={{ width: `${((index + 1) / questions.length) * 100}%` }} />
@@ -1025,17 +1051,17 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
             </div>
             {phase === "ANSWERING" && (
               <div className="panel interview-setup">
-                <label>
-                  나의 답변
-                  <textarea
-                    className="textarea"
-                    rows={9}
-                    value={draft}
-                    maxLength={8000}
-                    onChange={(e) => setDraft(e.target.value)}
-                    placeholder="생각을 정리해 답변해 주세요. 결론, 근거, 경험 순서로 구성하면 좋습니다."
-                  />
-                </label>
+                <label htmlFor="interview-answer">나의 답변</label>
+                <SpeechInput value={draft} onChange={setDraft} disabled={busy} />
+                <textarea
+                  id="interview-answer"
+                  className="textarea"
+                  rows={9}
+                  value={draft}
+                  maxLength={8000}
+                  onChange={(e) => setDraft(e.target.value)}
+                  placeholder="생각을 정리해 답변해 주세요. 결론, 근거, 경험 순서로 구성하면 좋습니다."
+                />
                 <div className="interview-actions">
                   <span className="muted">{draft.length.toLocaleString()} / 8,000자</span>
                   <button
@@ -1213,18 +1239,18 @@ function QuestionCard({
           <p>{question.source.evidence}</p>
         </details>
       )}
-      <label>
-        나의 답변
-        <textarea
-          className="textarea"
-          rows={6}
-          maxLength={8000}
-          disabled={busy}
-          value={answer}
-          onChange={(e) => onEdit(e.target.value)}
-          placeholder="답변을 작성하고 AI 피드백을 받아보세요."
-        />
-      </label>
+      <label htmlFor={`interview-question-${question.id}-answer`}>나의 답변</label>
+      <SpeechInput value={answer} onChange={onEdit} disabled={busy} />
+      <textarea
+        id={`interview-question-${question.id}-answer`}
+        className="textarea"
+        rows={6}
+        maxLength={8000}
+        disabled={busy}
+        value={answer}
+        onChange={(e) => onEdit(e.target.value)}
+        placeholder="답변을 작성하고 AI 피드백을 받아보세요."
+      />
       <div className="interview-actions">
         <button className="btn btn-secondary" disabled={busy} onClick={onSave}>
           내 질문에 저장

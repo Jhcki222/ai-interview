@@ -5,6 +5,12 @@
 3. Authentication → URL Configuration에서 Site URL을 실제 배포 URL로 설정하고 Redirect URLs에 `http://127.0.0.1:3000/auth/callback`, `https://YOUR_DOMAIN/auth/callback`을 허용합니다. 로컬 도메인을 localhost로 변경하면 해당 URL도 등록합니다.
 4. 이메일 인증을 활성화하고 SMTP를 설정합니다. 회원가입과 비밀번호 복구 메일의 링크는 Supabase가 제공하는 `ConfirmationURL`을 유지합니다. PKCE code 교환은 `/auth/callback`에서 이루어집니다. 복구 후 `/auth/update-password`로 이동합니다.
 
+## GitHub 로그인 설정
+
+GitHub **Settings → Developer settings → OAuth Apps**에서 OAuth App을 생성합니다. Homepage URL에는 배포 도메인을 입력하고 Authorization callback URL에는 Supabase **Authentication → Sign In / Providers → GitHub** 화면에 표시된 callback URL을 입력합니다. 이 callback은 GitHub에서 Supabase Auth로 돌아오는 주소입니다.
+
+OAuth App의 Client ID와 Client Secret을 Supabase **Authentication → Sign In / Providers → GitHub**에 입력하고 provider를 활성화합니다. 이 앱에서 사용하는 `/auth/callback` 주소는 Supabase **Authentication → URL Configuration → Redirect URLs**에도 허용되어야 합니다. GitHub 로그인 버튼은 Supabase provider 이름 `github`를 사용합니다.
+
 SSR 쿠키는 Supabase SSR이 관리하고 proxy가 갱신합니다. 모든 회원 API는 서버에서 `getUser()`로 검증하고, 변경 요청은 동일 출처 Origin을 요구합니다. 브라우저에서 JWT를 수동 저장하지 않습니다. `base:<정적 질문 ID>`와 `saved:<UUID>`는 다른 키입니다. 저장 질문에는 모범답안과 꼬리질문을 포함한 스냅샷이 저장됩니다.
 
 GET `/api/me/state`는 `{answers,progress,updatedAt}`, GET `/api/me/questions`는 `{questions:[{id,question,note,created_at,updated_at}]}`를 반환합니다. `updatedAt`는 질문 키별 답변·진행 기록의 가장 최근 DB `updated_at` 값이며 기존 학습 훅은 추가 필드를 무시할 수 있습니다. POST `/api/me/questions`는 전체 Question 또는 `{question:Question}`을 받고 새 레코드를 `{question:record}`로 반환합니다. PATCH `/api/me/questions/:id`는 `{question?,note?}`를 받습니다. 회원 ID는 요청 본문으로 받지 않습니다. 원본 질문 저장 후 새 레코드 키는 응답의 DB UUID로 구성합니다.

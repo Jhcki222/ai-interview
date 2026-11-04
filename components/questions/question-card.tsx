@@ -18,6 +18,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import type { LearningStatus, Progress, Question } from "@/types/question";
 import { difficultyLabels, importanceLabels } from "@/lib/questions";
 import { Button } from "@/components/ui/button";
+import { SpeechInput } from "@/components/ui/speech-input";
 import { cn } from "@/lib/utils";
 export const statusLabels: Record<LearningStatus, string> = {
   NOT_STARTED: "학습 전",
@@ -243,6 +244,7 @@ export const QuestionCard = memo(function QuestionCard({
               <label htmlFor={`${elementId}-answer`}>나의 언어로 정리하는 답변</label>
               <span>최대 20,000자</span>
             </div>
+            <SpeechInput value={answer} onChange={onEdit} disabled={busy} />
             <textarea
               id={`${elementId}-answer`}
               className="textarea"

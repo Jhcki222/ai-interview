@@ -69,8 +69,8 @@ export const summaryEvaluationSchema = z.object({
   improvements: z.array(z.string().min(1).max(80)).length(1),
 });
 export const conversationHistorySchema = z
-  .array(z.object({ question: z.string().min(1).max(1000), answer: z.string().min(1).max(1200) }))
-  .max(6);
+  .array(z.object({ question: z.string().min(1).max(400), answer: z.string().min(1).max(500) }))
+  .max(3);
 const coreRequestSchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("analyze"),

@@ -18,6 +18,7 @@ import { canExposeMemberData, isCurrentMemberRequest } from "@/lib/auth/session"
 import type { CompanyCollection } from "@/types/company";
 import { filterCompanyQuestions, resolveSavedQuestionDeepLink } from "@/lib/auth/companies";
 import { CompanyBoard } from "./company-board";
+import { SpeechInput } from "@/components/ui/speech-input";
 
 const statusNames = {
   NOT_STARTED: "시작 전",
@@ -34,6 +35,7 @@ export function MemberWorkspace({
   const ownerId = user?.id ?? null;
   const search = useSearchParams().toString();
   const [linkHash, setLinkHash] = useState("");
+  const [answerDrafts, setAnswerDrafts] = useState<Record<string, string>>({});
   const [deepLinkTarget, setDeepLinkTarget] = useState<string | null>(null);
   const handledDeepLink = useRef<string | null>(null);
   useEffect(() => {
@@ -461,15 +463,25 @@ export function MemberWorkspace({
                       event.preventDefault();
                       void mutate("/api/me/answers", "POST", {
                         question_key: key,
-                        answer_text: new FormData(event.currentTarget).get("answer"),
+                        answer_text: answerDrafts[key] ?? state.answers[key] ?? "",
                       });
                     }}
                   >
+                    <SpeechInput
+                      value={answerDrafts[key] ?? state.answers[key] ?? ""}
+                      onChange={(value) =>
+                        setAnswerDrafts((previous) => ({ ...previous, [key]: value }))
+                      }
+                      disabled={busy}
+                    />
                     <textarea
                       className="textarea"
                       name="answer"
                       aria-label="내 답변"
-                      defaultValue={state.answers[key]}
+                      value={answerDrafts[key] ?? state.answers[key] ?? ""}
+                      onChange={(event) =>
+                        setAnswerDrafts((previous) => ({ ...previous, [key]: event.target.value }))
+                      }
                       maxLength={20000}
                     />
                     <button className="btn btn-primary" disabled={busy}>

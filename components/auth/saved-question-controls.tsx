@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import type { Progress } from "@/types/question";
+import { SpeechInput } from "@/components/ui/speech-input";
 
 type Props = {
   id: string;
@@ -39,18 +40,18 @@ export function SavedQuestionControls({
         style={{ display: "grid", gap: 12 }}
       >
         <input type="hidden" name="question_key" value={questionKey} />
-        <label>
-          나의 답변
-          <textarea
-            className="textarea"
-            name="answer_text"
-            rows={5}
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            maxLength={20000}
-            placeholder="이 질문에 대한 나만의 답변을 작성해 보세요."
-          />
-        </label>
+        <label htmlFor={`${id}-saved-answer`}>나의 답변</label>
+        <SpeechInput value={draft} onChange={setDraft} disabled={busy} />
+        <textarea
+          id={`${id}-saved-answer`}
+          className="textarea"
+          name="answer_text"
+          rows={5}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          maxLength={20000}
+          placeholder="이 질문에 대한 나만의 답변을 작성해 보세요."
+        />
         <button className="btn btn-primary" disabled={busy}>
           내 답변 저장
         </button>

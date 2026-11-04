@@ -1,16 +1,16 @@
 import { it, expect } from "vitest";
 import { buildConversationRequest } from "../lib/ai/conversation";
 import { requestSchema } from "../lib/ai/schemas";
-it("keeps the latest six prior turns bounded and the current answer separate", () => {
+it("keeps the latest three prior turns bounded and the current answer separate", () => {
   const previous = Array.from({ length: 9 }, (_, i) => ({
     question: `이전${i}` + "질".repeat(2000),
     answer: `시작${i}` + "답".repeat(3000) + "결론",
   }));
   const body = buildConversationRequest("evaluate", "현재 질문", "현재 답변", previous);
-  expect(body.history).toHaveLength(6);
-  expect(body.history[0].question).toContain("이전3");
+  expect(body.history).toHaveLength(3);
+  expect(body.history[0].question).toContain("이전6");
   expect(body.history.at(-1)?.answer).toContain("결론");
-  expect(body.history.every((t) => t.question.length <= 1000 && t.answer.length <= 1200)).toBe(
+  expect(body.history.every((t) => t.question.length <= 400 && t.answer.length <= 500)).toBe(
     true,
   );
   expect(body.question).toBe("현재 질문");
@@ -41,7 +41,7 @@ it("keeps worst-case escaped histories and full current answers below byte limit
     "followup",
     value,
     value,
-    Array(6).fill({ question: value, answer: value }),
+    Array(3).fill({ question: value, answer: value }),
   );
   expect(new TextEncoder().encode(JSON.stringify(body)).length).toBeLessThan(180000);
 });

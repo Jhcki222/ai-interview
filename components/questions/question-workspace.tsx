@@ -25,6 +25,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { QuestionCard, statusLabels } from "@/components/questions/question-card";
+import { QuestionCompanyDialog } from "@/components/auth/question-company-dialog";
 import { useLearning } from "@/hooks/use-learning";
 import { categories, difficultyLabels, filterQuestions, importanceLabels } from "@/lib/questions";
 import { cn } from "@/lib/utils";
@@ -53,6 +54,8 @@ export function QuestionWorkspace({
   const [onlyBookmarks, setOnlyBookmarks] = useState(false);
   const [page, setPage] = useState(1);
   const [authOpen, setAuthOpen] = useState(false);
+  const [questionToSave, setQuestionToSave] = useState<Question | null>(null);
+  const [saveNotice, setSaveNotice] = useState("");
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [skipImport, setSkipImport] = useState(false);
@@ -409,7 +412,7 @@ export function QuestionWorkspace({
                         setAuthOpen(true);
                         return;
                       }
-                      void learning.saveQuestion(q);
+                      setQuestionToSave(q);
                     }}
                   />
                 </motion.div>
@@ -465,6 +468,16 @@ export function QuestionWorkspace({
           </div>
         </div>
       </div>
+      {saveNotice && (
+        <div className="learning-alert learning-success" role="status">
+          {saveNotice}
+        </div>
+      )}
+      <QuestionCompanyDialog
+        question={questionToSave}
+        onClose={() => setQuestionToSave(null)}
+        onSaved={setSaveNotice}
+      />
       <Dialog open={authOpen} onOpenChange={setAuthOpen}>
         <DialogContent>
           <DialogHeader>

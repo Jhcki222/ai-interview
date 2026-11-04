@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Github } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { safeRedirect } from "@/lib/auth/validation";
 import {
@@ -18,7 +19,7 @@ export function AuthForm({ mode, next = "/questions" }: { mode: AuthMode; next?:
   const router = useRouter();
   const [client] = useState(() => createClient());
   const [message, setMessage] = useState("");
-  const [socialBusy, setSocialBusy] = useState<"google" | "kakao" | null>(null);
+  const [socialBusy, setSocialBusy] = useState<"google" | "github" | null>(null);
   const {
     register,
     handleSubmit,
@@ -36,7 +37,7 @@ export function AuthForm({ mode, next = "/questions" }: { mode: AuthMode; next?:
     update: "새 비밀번호 설정",
   };
 
-  async function handleOAuth(provider: "google" | "kakao") {
+  async function handleOAuth(provider: "google" | "github") {
     if (!client) {
       setMessage("인증 서버 설정(Supabase 환경변수)이 로드되지 않았습니다. Vercel 환경변수를 확인해 주세요.");
       return;
@@ -53,7 +54,7 @@ export function AuthForm({ mode, next = "/questions" }: { mode: AuthMode; next?:
         },
       });
       if (error) {
-        setMessage(`${provider === "google" ? "구글(Gmail)" : "카카오"} 로그인 진행 중 오류: ${error.message}`);
+        setMessage(`${provider === "google" ? "구글(Gmail)" : "GitHub"} 로그인 진행 중 오류: ${error.message}`);
         setSocialBusy(null);
       }
     } catch (err: any) {
@@ -369,22 +370,22 @@ export function AuthForm({ mode, next = "/questions" }: { mode: AuthMode; next?:
               }}
             >
               <GoogleIcon />
-              <span>{socialBusy === "google" ? "Google 연결 중…" : "Google(Gmail)로 계속하기"}</span>
+              <span>{socialBusy === "google" ? "Google 연결 중…" : "Google로 계속하기"}</span>
             </button>
 
             <button
               type="button"
               className="btn"
-              onClick={() => handleOAuth("kakao")}
+              onClick={() => handleOAuth("github")}
               disabled={!client || isSubmitting || socialBusy !== null}
               style={{
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 gap: 10,
-                background: "#FEE500",
-                color: "#191919",
-                border: "1px solid #FEE500",
+                background: "#24292f",
+                color: "#ffffff",
+                border: "1px solid #24292f",
                 fontWeight: 500,
                 fontSize: 13,
                 borderRadius: 8,
@@ -393,8 +394,8 @@ export function AuthForm({ mode, next = "/questions" }: { mode: AuthMode; next?:
                 transition: "opacity 0.15s ease",
               }}
             >
-              <KakaoIcon />
-              <span>{socialBusy === "kakao" ? "카카오 연결 중…" : "카카오로 계속하기"}</span>
+              <Github size={18} />
+              <span>{socialBusy === "github" ? "GitHub 연결 중…" : "GitHub로 계속하기"}</span>
             </button>
           </div>
         </div>
@@ -418,7 +419,6 @@ export function AuthForm({ mode, next = "/questions" }: { mode: AuthMode; next?:
     </section>
   );
 }
-
 function GoogleIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
@@ -442,10 +442,4 @@ function GoogleIcon() {
   );
 }
 
-function KakaoIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor">
-      <path d="M12 3C6.477 3 2 6.477 2 10.767c0 2.766 1.87 5.184 4.67 6.495l-1.187 4.349a.375.375 0 0 0 .548.423l5.068-3.353c.297.028.597.042.901.042 5.523 0 10-3.477 10-7.767S17.523 3 12 3z" />
-    </svg>
-  );
-}
+
