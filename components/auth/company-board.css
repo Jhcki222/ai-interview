@@ -24,7 +24,7 @@
 }
 .company-space-heading p {
   font-size: 12px;
-  color: var(--muted-foreground, #7c8394);
+  color: var(--secondary-text);
   margin: 0;
 }
 .company-space-heading .btn {
@@ -42,14 +42,14 @@
 .company-scope-tabs {
   display: flex;
   gap: 6px;
-  background: var(--muted, #f0f1f6);
+  background: var(--surface-muted);
   padding: 4px;
   border-radius: 11px;
 }
 .company-scope-tabs button {
   border: 0;
   background: transparent;
-  color: var(--muted-foreground, #737b8e);
+  color: var(--secondary-text);
   padding: 8px 12px;
   border-radius: 8px;
   font-size: 11px;
@@ -57,8 +57,8 @@
   white-space: nowrap;
 }
 .company-scope-tabs button.selected {
-  background: var(--background, #fff);
-  color: var(--foreground, #28334b);
+  background: var(--surface);
+  color: var(--foreground);
   box-shadow: 0 1px 4px #1827400a;
 }
 .company-scope-tabs button span {
@@ -71,10 +71,10 @@
   gap: 9px;
   align-items: center;
   width: 240px;
-  color: var(--muted-foreground, #8b93a5);
+  color: var(--secondary-text);
   border: 1px solid var(--border, #e6e8ef);
   border-radius: 10px;
-  background: var(--card, #fff);
+  background: var(--surface);
   padding: 10px 12px;
 }
 .company-search input {
@@ -94,14 +94,15 @@
 }
 .company-board {
   display: grid;
-  grid-template-columns: repeat(4, minmax(200px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
   align-items: start;
-  overflow-x: auto;
+  min-width: 0;
   padding: 2px 1px 12px;
 }
 .company-column {
-  background: var(--muted, #f4f5f9);
+  min-width: 0;
+  background: var(--surface-muted);
   border: 1px solid var(--border, #e9ebf1);
   border-radius: 14px;
   min-height: 280px;
@@ -135,12 +136,12 @@
 }
 .company-column-count {
   font-size: 10px;
-  color: var(--muted-foreground, #8b93a5);
+  color: var(--secondary-text);
   font-variant-numeric: tabular-nums;
 }
 .company-column-heading button {
   margin-left: auto;
-  color: var(--muted-foreground, #8b93a5);
+  color: var(--secondary-text);
   border: 0;
   background: transparent;
   padding: 2px;
@@ -152,7 +153,7 @@
 .company-card {
   border: 1px solid var(--border, #e5e7ef);
   border-radius: 11px;
-  background: var(--card, #fff);
+  background: var(--surface);
   padding: 15px 14px 11px;
   box-shadow: 0 2px 5px #18274004;
   transition:
@@ -202,7 +203,7 @@
 .company-edit {
   background: transparent;
   border: 0;
-  color: var(--muted-foreground, #9ca3b4);
+  color: var(--secondary-text);
   padding: 0;
 }
 .company-card-title {
@@ -220,7 +221,7 @@
 }
 .company-card-title p {
   font-size: 10px;
-  color: var(--muted-foreground, #7b8497);
+  color: var(--secondary-text);
   margin: 0;
   line-height: 1.6;
   overflow-wrap: anywhere;
@@ -230,7 +231,7 @@
   justify-content: space-between;
   gap: 6px;
   font-size: 9px;
-  color: var(--muted-foreground, #8a93a5);
+  color: var(--secondary-text);
 }
 .company-card-detail span:first-child {
   display: flex;
@@ -239,14 +240,14 @@
 }
 .company-card-detail strong {
   font-weight: 650;
-  color: var(--foreground, #4b5670);
+  color: var(--foreground);
 }
 .company-deadline {
   display: flex;
   align-items: center;
   gap: 5px;
   margin-top: 11px;
-  color: var(--muted-foreground, #8992a4);
+  color: var(--secondary-text);
   font-size: 9px;
 }
 .company-deadline span {
@@ -262,8 +263,8 @@
 }
 .company-card-bottom select {
   font-size: 9px;
-  color: var(--muted-foreground, #7f889c);
-  background: var(--muted, #f4f5f9);
+  color: var(--secondary-text);
+  background: var(--surface-muted);
   border: 0;
   padding: 5px 6px;
   border-radius: 5px;
@@ -286,7 +287,7 @@
   border: 1px dashed var(--border, #dfe3ec);
   background: transparent;
   border-radius: 10px;
-  color: var(--muted-foreground, #9aa2b3);
+  color: var(--secondary-text);
   padding: 24px 8px;
   font-size: 10px;
 }
@@ -315,7 +316,7 @@
   display: grid;
   gap: 8px;
   font-size: 12px;
-  color: var(--muted-foreground, #647087);
+  color: var(--secondary-text);
 }
 .company-form label > span {
   color: #8078e4;
@@ -385,7 +386,7 @@
   font-size: 14px;
   line-height: 1.8;
   padding: 16px;
-  background: var(--muted, #f5f6fb);
+  background: var(--surface-muted);
   border-radius: 10px;
 }
 .company-board button:focus-visible,
@@ -421,13 +422,14 @@ html.dark .company-mark-3 {
 }
 @media (max-width: 1100px) {
   .company-board {
-    grid-template-columns: repeat(4, minmax(220px, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     padding-bottom: 15px;
   }
 }
 @media (max-width: 640px) {
   .company-space-heading {
-    align-items: start;
+    align-items: stretch;
+    flex-direction: column;
   }
   .company-space-heading h2 {
     font-size: 19px;
@@ -452,11 +454,13 @@ html.dark .company-mark-3 {
   }
   .company-board {
     gap: 12px;
-    grid-template-columns: repeat(4, 235px);
-    scroll-snap-type: x proximity;
+    grid-template-columns: minmax(0, 1fr);
   }
   .company-column {
-    scroll-snap-align: start;
+    min-height: 0;
+  }
+  .company-column-empty {
+    min-height: 140px;
   }
   .company-form-row {
     grid-template-columns: 1fr;

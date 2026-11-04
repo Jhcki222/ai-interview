@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import CircularCarousel from "@/components/ui/CircularCarousel";
 import { categories, questions } from "@/lib/questions";
@@ -56,6 +57,9 @@ function generateCategorySvg(
 export function TopicCarousel() {
   const router = useRouter();
   const { resolvedTheme } = useTheme();
+  const [hasMounted, setHasMounted] = useState(false);
+  useEffect(() => setHasMounted(true), []);
+  const dark = hasMounted && resolvedTheme === "dark";
 
   const carouselItems = categories.map((cat) => {
     const count = questions.filter((q) => q.category === cat.id).length;
@@ -66,7 +70,7 @@ export function TopicCarousel() {
       iconLabel: "TOPIC",
     };
     return {
-      src: generateCategorySvg(cat.name, count, meta, resolvedTheme === "dark"),
+      src: generateCategorySvg(cat.name, count, meta, dark),
       alt: cat.name,
       title: cat.name,
       subtitle: `${count}개 기술 면접 질문`,
