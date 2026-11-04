@@ -41,11 +41,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               username:
                 typeof u.user_metadata?.username === "string"
                   ? u.user_metadata.username
-                  : emailToUsername(u.email),
+                  : typeof u.user_metadata?.full_name === "string"
+                    ? u.user_metadata.full_name
+                    : typeof u.user_metadata?.name === "string"
+                      ? u.user_metadata.name
+                      : emailToUsername(u.email),
               nickname:
                 typeof u.user_metadata?.nickname === "string"
                   ? u.user_metadata.nickname
-                  : undefined,
+                  : typeof u.user_metadata?.full_name === "string"
+                    ? u.user_metadata.full_name
+                    : typeof u.user_metadata?.name === "string"
+                      ? u.user_metadata.name
+                      : u.email?.split("@")[0],
             }
           : null,
       );
