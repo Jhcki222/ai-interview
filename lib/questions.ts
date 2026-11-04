@@ -1,4 +1,5 @@
 import cs from "../data/questions/cs.json";
+import frontend from "../data/questions/frontend.json";
 import backend from "../data/questions/backend.json";
 import ai from "../data/questions/ai.json";
 import personality from "../data/questions/personality.json";
@@ -13,6 +14,11 @@ export const categories: { id: CategoryId; name: string; description: string }[]
     name: "CS 기초",
     description: "자료구조, 알고리즘, 운영체제, 네트워크와 데이터베이스",
   },
+  {
+    id: "FRONTEND",
+    name: "프런트엔드",
+    description: "브라우저 렌더링, JavaScript, React, 웹 성능과 접근성",
+  },
   { id: "BACKEND", name: "백엔드", description: "API, 인증, 데이터 처리와 안정적인 서비스 운영" },
   { id: "AI", name: "AI·데이터", description: "머신러닝, 딥러닝, 생성형 AI와 모델 평가" },
   { id: "PERSONALITY", name: "인성·협업", description: "협업, 의사소통, 책임감과 문제 해결 경험" },
@@ -22,6 +28,7 @@ export const categories: { id: CategoryId; name: string; description: string }[]
 ];
 export const questions = [
   ...cs,
+  ...frontend,
   ...backend,
   ...ai,
   ...personality,

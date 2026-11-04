@@ -18,6 +18,7 @@ import {
   summarySchema,
   type Analysis,
   type Evaluation,
+  MAX_JOB_POSTING_CHARS,
   type Settings,
   type Summary,
 } from "@/lib/ai/schemas";
@@ -70,6 +71,8 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
   const [phase, setPhase] = useState<Phase>("SETUP");
   const [settings, setSettings] = useState<Settings>(initialSettings);
   const [files, setFiles] = useState<File[]>([]);
+  const [jobPostingFiles, setJobPostingFiles] = useState<File[]>([]);
+  const [jobPostingDragging, setJobPostingDragging] = useState(false);
   const [context, setContext] = useState("");
   const [analysis, setAnalysis] = useState<Analysis>(blankAnalysis);
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -235,30 +238,44 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
     const timeout = setTimeout(() => extractionController.abort(), 60000);
     try {
       validateFiles(files);
+      validateFiles(jobPostingFiles);
       if (!files.length && !context.trim())
         throw new Error("문서를 첨부하거나 경력·프로젝트 설명을 입력해 주세요.");
       controller.current = extractionController;
       running.current = true;
       setBusy(true);
       setProgress("문서에서 텍스트를 추출하고 있습니다.");
-      const extracted = await extractDocuments(files, extractionController.signal);
+      const extracted = await extractDocuments(files, extractionController.signal, setProgress);
+      const extractedJobPosting = await extractDocuments(
+        jobPostingFiles,
+        extractionController.signal,
+        setProgress,
+      );
       extractionController.signal.throwIfAborted();
       if (controller.current !== extractionController)
         throw new DOMException("취소되었습니다.", "AbortError");
       const documents = [extracted, context].filter(Boolean).join("\n\n");
+      const jobPosting = [settings.jobPosting.trim(), extractedJobPosting.trim()]
+        .filter(Boolean)
+        .join("\n\n");
+      if (jobPosting.length > MAX_JOB_POSTING_CHARS)
+        throw new Error(`채용공고 텍스트는 최대 ${MAX_JOB_POSTING_CHARS.toLocaleString()}자까지 사용할 수 있습니다.`);
+      const analysisSettings = { ...settings, jobPosting };
+      setSettings(analysisSettings);
       clearTimeout(timeout);
       controller.current = null;
       running.current = false;
       setBusy(false);
       setProgress("");
       await run(
-        { action: "analyze", documents, settings },
+        { action: "analyze", documents, settings: analysisSettings },
         analysisSchema,
         "ANALYZING",
         "SETUP",
         (value) => {
           setAnalysis(value);
           setFiles([]);
+          setJobPostingFiles([]);
           setContext("");
           move("REVIEW");
         },
@@ -370,6 +387,9 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
     setLearningEvaluations({});
     setPhase("SETUP");
     setQuestions([]);
+    setFiles([]);
+    setJobPostingFiles([]);
+    setContext("");
     setTurns([]);
     setDraft("");
     setSummary(null);
@@ -425,6 +445,27 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
     try {
       validateFiles(combined);
       setFiles(combined);
+      setError("");
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
+  function addJobPostingFiles(incoming: File[]) {
+    if (busy) return;
+    const combined = [...jobPostingFiles];
+    for (const file of incoming)
+      if (
+        !combined.some(
+          (existing) =>
+            existing.name === file.name &&
+            existing.size === file.size &&
+            existing.lastModified === file.lastModified,
+        )
+      )
+        combined.push(file);
+    try {
+      validateFiles(combined);
+      setJobPostingFiles(combined);
       setError("");
     } catch (e) {
       setError((e as Error).message);
@@ -786,11 +827,65 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
               className="textarea"
               rows={4}
               value={settings.jobPosting}
-              maxLength={12000}
+              maxLength={MAX_JOB_POSTING_CHARS}
               onChange={(e) => setSettings({ ...settings, jobPosting: e.target.value })}
               placeholder="주요 업무와 자격 요건을 붙여 넣으세요."
             />
-          </label>{" "}
+          </label>
+          <div
+            className={`interview-upload ${jobPostingDragging ? "is-dragging" : ""}`}
+            role="group"
+            aria-label="채용공고 파일 업로드"
+            onDragOver={(event) => {
+              event.preventDefault();
+              if (!busy) setJobPostingDragging(true);
+            }}
+            onDragLeave={() => setJobPostingDragging(false)}
+            onDrop={(event) => {
+              event.preventDefault();
+              setJobPostingDragging(false);
+              addJobPostingFiles(Array.from(event.dataTransfer.files));
+            }}
+          >
+            <strong>채용공고 파일 추가</strong>
+            <span className="muted">
+              파일을 끌어 놓거나 선택하세요 · PDF, DOCX, TXT, PNG, JPG, WEBP · 최대 3개 · 파일당 5MB
+            </span>
+            <input
+              aria-label="채용공고 파일 선택"
+              type="file"
+              accept=".pdf,.docx,.txt,.png,.jpg,.jpeg,.webp"
+              multiple
+              disabled={busy}
+              onChange={(event) => {
+                addJobPostingFiles(Array.from(event.target.files || []));
+                event.target.value = "";
+              }}
+            />
+            {jobPostingFiles.length > 0 && (
+              <ul className="interview-files">
+                {jobPostingFiles.map((file, index) => (
+                  <li key={`${file.name}-${file.lastModified}`}>
+                    <span>
+                      <strong>{file.name}</strong>
+                      <small className="muted">{(file.size / 1024).toFixed(1)}KB · 텍스트 추출 대기</small>
+                    </span>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      aria-label={`${file.name} 제거`}
+                      disabled={busy}
+                      onClick={() =>
+                        setJobPostingFiles((previous) => previous.filter((_, itemIndex) => itemIndex !== index))
+                      }
+                    >
+                      제거
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
           <fieldset className="interview-mode">
             <legend>연습 방식</legend>
             {[
@@ -827,12 +922,12 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
           >
             <strong>이력서 · 자기소개서 · 포트폴리오</strong>
             <span className="muted">
-              여기로 파일을 끌어 놓거나 선택하세요 · PDF, DOCX, TXT · 최대 3개 · 파일당 5MB
+              여기로 파일을 끌어 놓거나 선택하세요 · PDF, DOCX, TXT, PNG, JPG, WEBP · 최대 3개 · 파일당 5MB
             </span>
             <input
               aria-label="면접 참고 문서 선택"
               type="file"
-              accept=".pdf,.docx,.txt"
+              accept=".pdf,.docx,.txt,.png,.jpg,.jpeg,.webp"
               multiple
               disabled={busy}
               onChange={(e) => {
@@ -896,6 +991,20 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
               실제 경험과 다른 내용은 수정하세요. 아래 내용으로 질문을 생성합니다.
             </p>
           </div>
+          {settings.jobPosting.trim() && (
+            <label>
+              질문 생성에 사용할 채용공고
+              <textarea
+                className="textarea"
+                rows={6}
+                maxLength={MAX_JOB_POSTING_CHARS}
+                value={settings.jobPosting}
+                onChange={(event) =>
+                  setSettings({ ...settings, jobPosting: event.target.value })
+                }
+              />
+            </label>
+          )}
           <label>
             경험 요약
             <textarea
@@ -1052,7 +1161,6 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
             {phase === "ANSWERING" && (
               <div className="panel interview-setup">
                 <label htmlFor="interview-answer">나의 답변</label>
-                <SpeechInput value={draft} onChange={setDraft} disabled={busy} />
                 <textarea
                   id="interview-answer"
                   className="textarea"
@@ -1062,6 +1170,7 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
                   onChange={(e) => setDraft(e.target.value)}
                   placeholder="생각을 정리해 답변해 주세요. 결론, 근거, 경험 순서로 구성하면 좋습니다."
                 />
+                <SpeechInput value={draft} onChange={setDraft} disabled={busy} />
                 <div className="interview-actions">
                   <span className="muted">{draft.length.toLocaleString()} / 8,000자</span>
                   <button
@@ -1240,7 +1349,6 @@ function QuestionCard({
         </details>
       )}
       <label htmlFor={`interview-question-${question.id}-answer`}>나의 답변</label>
-      <SpeechInput value={answer} onChange={onEdit} disabled={busy} />
       <textarea
         id={`interview-question-${question.id}-answer`}
         className="textarea"
@@ -1251,6 +1359,7 @@ function QuestionCard({
         onChange={(e) => onEdit(e.target.value)}
         placeholder="답변을 작성하고 AI 피드백을 받아보세요."
       />
+      <SpeechInput value={answer} onChange={onEdit} disabled={busy} />
       <div className="interview-actions">
         <button className="btn btn-secondary" disabled={busy} onClick={onSave}>
           내 질문에 저장

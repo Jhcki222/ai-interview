@@ -41,7 +41,6 @@ export function SavedQuestionControls({
       >
         <input type="hidden" name="question_key" value={questionKey} />
         <label htmlFor={`${id}-saved-answer`}>나의 답변</label>
-        <SpeechInput value={draft} onChange={setDraft} disabled={busy} />
         <textarea
           id={`${id}-saved-answer`}
           className="textarea"
@@ -52,6 +51,7 @@ export function SavedQuestionControls({
           maxLength={20000}
           placeholder="이 질문에 대한 나만의 답변을 작성해 보세요."
         />
+        <SpeechInput value={draft} onChange={setDraft} disabled={busy} />
         <button className="btn btn-primary" disabled={busy}>
           내 답변 저장
         </button>

@@ -244,7 +244,6 @@ export const QuestionCard = memo(function QuestionCard({
               <label htmlFor={`${elementId}-answer`}>나의 언어로 정리하는 답변</label>
               <span>최대 20,000자</span>
             </div>
-            <SpeechInput value={answer} onChange={onEdit} disabled={busy} />
             <textarea
               id={`${elementId}-answer`}
               className="textarea"
@@ -254,6 +253,7 @@ export const QuestionCard = memo(function QuestionCard({
               value={answer}
               onChange={(event) => onEdit(event.target.value)}
             />
+            <SpeechInput value={answer} onChange={onEdit} disabled={busy} />
             <div className="editor-footer">
               <span>{answer.length.toLocaleString()} / 20,000</span>
               <div>

@@ -35,7 +35,16 @@ export const progressPatchSchema = z
 export const savedQuestionSchema = z
   .object({
     id: z.string().min(1).max(150),
-    category: z.enum(["CS", "BACKEND", "AI", "PERSONALITY", "MOTIVATION", "BUSINESS", "PROJECTS"]),
+    category: z.enum([
+      "CS",
+      "FRONTEND",
+      "BACKEND",
+      "AI",
+      "PERSONALITY",
+      "MOTIVATION",
+      "BUSINESS",
+      "PROJECTS",
+    ]),
     subcategory: z.string().min(1).max(100),
     topic: z.string().min(1).max(200),
     difficulty: z.enum(["BASIC", "INTERMEDIATE", "ADVANCED"]),

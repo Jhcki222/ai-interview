@@ -8,11 +8,14 @@ describe("interview boundaries", () => {
     expect(transition("SETUP", "ANALYZING")).toBe("ANALYZING");
     expect(transition("FEEDBACK", "ANSWERING")).toBe("ANSWERING");
   });
-  it("rejects excess files, oversize and unsupported documents", () => {
+  it("accepts text, PDF and image documents while rejecting unsupported files", () => {
     expect(() => validateFiles(Array(4).fill({ name: "a.txt", size: 1 }))).toThrow();
     expect(() => validateFiles([{ name: "a.txt", size: MAX_FILE_BYTES + 1 }])).toThrow();
     expect(() => validateFiles([{ name: "a.exe", size: 1 }])).toThrow();
     expect(() => validateFiles([{ name: "a.pdf", size: 1 }])).not.toThrow();
+    expect(() => validateFiles([{ name: "a.png", size: 1 }])).not.toThrow();
+    expect(() => validateFiles([{ name: "a.JPG", size: 1 }])).not.toThrow();
+    expect(() => validateFiles([{ name: "a.webp", size: 1 }])).not.toThrow();
   });
   it("rejects partial AI output and fabricated unbounded scores", () => {
     expect(generationSchema.safeParse({ questions: [{ question: "partial" }] }).success).toBe(

@@ -40,6 +40,7 @@ export const summarySchema = z.object({
   priorities: z.array(text).min(1).max(10),
   studyPlan: z.array(text).min(1).max(10),
 });
+export const MAX_JOB_POSTING_CHARS = 12000;
 export const settingsSchema = z.object({
   role: z.string().min(1).max(100),
   level: z.enum(["신입", "주니어", "시니어"]),
@@ -48,7 +49,7 @@ export const settingsSchema = z.object({
   company: z.string().trim().max(100).default(""),
   industry: z.string().trim().max(100).default(""),
   division: z.string().trim().max(100).default(""),
-  jobPosting: z.string().trim().max(12000).default(""),
+  jobPosting: z.string().trim().max(MAX_JOB_POSTING_CHARS).default(""),
   interviewType: z
     .enum(["technical", "project", "personality", "motivation", "comprehensive"])
     .default("comprehensive"),

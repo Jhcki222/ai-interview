@@ -1,5 +1,5 @@
 export type CategoryId =
-  "CS" | "BACKEND" | "AI" | "PERSONALITY" | "MOTIVATION" | "BUSINESS" | "PROJECTS";
+  "CS" | "FRONTEND" | "BACKEND" | "AI" | "PERSONALITY" | "MOTIVATION" | "BUSINESS" | "PROJECTS";
 export type Difficulty = "BASIC" | "INTERMEDIATE" | "ADVANCED";
 export type Importance = "ESSENTIAL" | "IMPORTANT" | "ADVANCED";
 export type LearningStatus = "NOT_STARTED" | "IN_PROGRESS" | "NEEDS_REVIEW" | "COMPLETED";

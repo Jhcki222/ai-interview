@@ -10,6 +10,7 @@ const categoryGradients: Record<
   { bg1: string; bg2: string; accent: string; iconLabel: string }
 > = {
   CS: { bg1: "#f1effc", bg2: "#deddf5", accent: "#7666bd", iconLabel: "CS" },
+  FRONTEND: { bg1: "#eef6f5", bg2: "#dcecea", accent: "#5c9990", iconLabel: "FE" },
   BACKEND: { bg1: "#f0f3fb", bg2: "#dfe7f7", accent: "#657faf", iconLabel: "BE" },
   AI: { bg1: "#f4f0fc", bg2: "#e5dcf5", accent: "#8a72b5", iconLabel: "AI" },
   PERSONALITY: { bg1: "#faf3f7", bg2: "#eedfe9", accent: "#aa819c", iconLabel: "FIT" },
@@ -27,7 +28,7 @@ function generateCategorySvg(
   const background1 = dark ? "#24283c" : meta.bg1;
   const background2 = dark ? "#30364e" : meta.bg2;
   const ink = dark ? "#eeeefa" : "#3c4058";
-  const secondary = dark ? "#a9acc8" : "#85859e";
+  const secondary = dark ? "#a9acc8" : "#687386";
   const accent = dark ? "#b3a6e7" : meta.accent;
   const svg = `
 <svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
@@ -37,7 +38,7 @@ function generateCategorySvg(
       <stop offset="100%" stop-color="${background2}" />
     </linearGradient>
   </defs>
-  <rect x="1" y="1" width="398" height="398" rx="32" fill="url(#g_${meta.iconLabel})" stroke="${dark ? "#454c67" : "#ffffff"}" stroke-width="2" />
+  <rect x="1" y="1" width="398" height="398" rx="32" fill="url(#g_${meta.iconLabel})" fill-opacity="0.9" stroke="${dark ? "#454c67" : "#ffffff"}" stroke-opacity="0.82" stroke-width="2" />
   <circle cx="365" cy="35" r="110" fill="none" stroke="${accent}" stroke-opacity="0.09" stroke-width="1" />
   <circle cx="365" cy="35" r="145" fill="none" stroke="${accent}" stroke-opacity="0.07" stroke-width="1" />
   <circle cx="200" cy="140" r="52" fill="${accent}" fill-opacity="0.06" />
@@ -46,7 +47,7 @@ function generateCategorySvg(
   <text x="200" y="235" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="23" font-weight="650" fill="${ink}" text-anchor="middle">${name}</text>
   <rect x="135" y="260" width="130" height="28" rx="14" fill="${accent}" fill-opacity="0.08" />
   <text x="200" y="279" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="13" font-weight="500" fill="${accent}" text-anchor="middle">${count}개 질문</text>
-  <text x="200" y="340" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="12" fill="${secondary}" text-anchor="middle">한 질문씩, 더 단단하게 →</text>
+  <text x="200" y="340" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="12" fill="${secondary}" text-anchor="middle">질문 목록 보기 →</text>
 </svg>`.trim();
 
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
@@ -90,7 +91,7 @@ export function TopicCarousel() {
         focusOnClick={true}
         captions={true}
         cornerRadius={24}
-        innerShade={0.08}
+        innerShade={0.2}
         fadeColor="transparent"
         onItemClick={(item: any) => {
           if (item?.categoryId) {

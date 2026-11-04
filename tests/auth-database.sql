@@ -9,7 +9,7 @@ set local role authenticated;
 select set_config('request.jwt.claim.sub','11111111-1111-4111-8111-111111111111',true);
 insert into public.saved_questions(id,user_id,question) values(
  '33333333-3333-4333-8333-333333333333','11111111-1111-4111-8111-111111111111',
- '{"id":"custom-1","category":"CS","subcategory":"network","topic":"HTTP","difficulty":"BASIC","importance":"ESSENTIAL","question":"HTTP란?","modelAnswer":{"summary":"요약","interviewAnswer":"답변","detailedExplanation":"설명","example":"예시","keywords":["HTTP"]},"followUps":[{"id":"f1","question":"특징은?","modelAnswer":"첫 답변"},{"id":"f2","question":"제약은?","modelAnswer":"둘째 답변"}]}'
+ '{"id":"custom-1","category":"FRONTEND","subcategory":"React 렌더링","topic":"React state","difficulty":"BASIC","importance":"ESSENTIAL","question":"React 상태 변경은 화면에 어떻게 반영되나요?","modelAnswer":{"summary":"요약","interviewAnswer":"답변","detailedExplanation":"설명","example":"예시","keywords":["React","state"]},"followUps":[{"id":"f1","question":"렌더 단계에서 무엇을 계산하나요?","modelAnswer":"새 UI 트리를 계산합니다."},{"id":"f2","question":"커밋 단계에서는 무엇을 하나요?","modelAnswer":"필요한 DOM 변경을 적용합니다."}]}'
 );
 do $$ declare invalid jsonb; original jsonb; retained jsonb; begin
  select question into original from public.saved_questions where id='33333333-3333-4333-8333-333333333333';

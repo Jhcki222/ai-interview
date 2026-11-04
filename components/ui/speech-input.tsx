@@ -117,10 +117,10 @@ export function SpeechInput({
   }
 
   return (
-    <div className="speech-input-control">
+    <div className={`speech-input-control${listening ? " is-listening" : ""}`}>
       <button
         type="button"
-        className="btn btn-secondary btn-icon"
+        className="speech-input-button"
         aria-label={listening ? "음성 인식 중지" : "한국어 음성 입력 시작"}
         aria-pressed={listening}
         title={
@@ -134,9 +134,10 @@ export function SpeechInput({
         onClick={toggle}
       >
         {listening ? <MicOff size={16} /> : <Mic size={16} />}
+        <span>{listening ? "듣는 중" : "음성 입력"}</span>
       </button>
       {status && (
-        <span className="muted" role="status">
+        <span className="speech-input-status" role="status">
           {status}
         </span>
       )}

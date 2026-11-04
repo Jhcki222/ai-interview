@@ -1,7 +1,8 @@
 import { questions, categories } from "../lib/questions";
 import { validateQuestions } from "../lib/question-validation";
 const required = {
-  CS: 104,
+  CS: 106,
+  FRONTEND: 24,
   BACKEND: 104,
   AI: 84,
   PERSONALITY: 32,

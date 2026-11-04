@@ -125,21 +125,21 @@ export function QuestionWorkspace({
   return (
     <div className="questions-page">
       <div className="eyebrow">
-        <HugeiconsIcon icon={Book01Icon} size={14} /> BUILD YOUR KNOWLEDGE
+        <HugeiconsIcon icon={Book01Icon} size={14} /> 질문
       </div>
       <div className="questions-page-title">
         <div>
           <h1 className="page-heading">
-            {detail ? "질문 깊이 살펴보기" : "질문으로 쌓는, 탄탄한 기본기"}
+            {detail ? "질문 상세" : "면접 질문"}
           </h1>
           <p className="muted">
             {detail
-              ? "개념을 이해하고, 나만의 언어로 설명하는 연습을 해 보세요."
-              : "한 질문씩 이해하고 설명하며, 면접에서 꺼내 쓸 실력을 만들어 보세요."}
+              ? "질문과 답변을 확인하세요."
+              : "분야별 질문을 확인하고 답변을 연습하세요."}
           </p>
         </div>
         <span className="question-total">
-          <span>{questions.length}</span>개 질문 · 7개 분야
+          <span>{questions.length}</span>개 질문 · {categories.length}개 분야
         </span>
       </div>
       {detail ? (
@@ -209,7 +209,7 @@ export function QuestionWorkspace({
               <div className="category-progress">
                 <span>
                   <span className="progress-dot" />
-                  나의 학습 여정
+                  학습 진행률
                 </span>
                 <strong>
                   {completed}
@@ -218,11 +218,7 @@ export function QuestionWorkspace({
                 <div className="mini-progress">
                   <span style={{ width: `${(completed / questions.length) * 100}%` }} />
                 </div>
-                <p>
-                  {user
-                    ? "차근차근 쌓이는 나만의 실력"
-                    : "로그인하면 학습 기록을 이어갈 수 있어요."}
-                </p>
+                {!user && <p>로그인하면 답변과 학습 상태를 저장할 수 있습니다.</p>}
               </div>
             </div>
           </aside>
@@ -484,11 +480,11 @@ export function QuestionWorkspace({
             <span className="login-dialog-icon">
               <HugeiconsIcon icon={Book01Icon} size={25} />
             </span>
-            <DialogTitle>배움을 나만의 기록으로 남겨요.</DialogTitle>
+            <DialogTitle>로그인이 필요합니다</DialogTitle>
             <DialogDescription>
-              질문과 답변을 저장하려면 로그인이 필요합니다.
+              질문과 답변을 계정에 저장하려면 로그인하세요.
               <br />
-              작성 중인 답변은 현재 탭에 임시 보관되어 있어요.
+              현재 답변은 이 브라우저 탭에 임시 보관됩니다.
             </DialogDescription>
           </DialogHeader>
           <div className="login-dialog-benefits">

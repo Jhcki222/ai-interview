@@ -1,6 +1,5 @@
 import Link from "next/link";
 import {
-  ArrowDownRight,
   ArrowRight,
   ArrowUpRight,
   AudioLines,
@@ -13,15 +12,16 @@ import {
   GitBranch,
   Layers3,
   MessagesSquare,
+  Monitor,
   Sparkles,
   UserRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { categories, questions } from "@/lib/questions";
 import { TopicCarousel } from "@/components/home/topic-carousel";
-const categoryIcons = [Cpu, Code2, BrainCircuit, MessagesSquare, UserRound, Layers3, GitBranch];
+const categoryIcons = [Cpu, Monitor, Code2, BrainCircuit, MessagesSquare, UserRound, Layers3, GitBranch];
 export default function HomePage() {
-  const featured = ["CS", "BACKEND", "AI"]
+  const featured = ["CS", "FRONTEND", "BACKEND"]
     .map((category) => questions.find((q) => q.category === category))
     .filter((q) => q !== undefined);
   return (
@@ -62,11 +62,12 @@ export default function HomePage() {
           </div>
           <div className="feature-copy">
             <h2>
-              탄탄한 기본기,
-              <br />한 질문에서 시작해요.
+              다양한 분야의 실전 면접
+              <br />
+              질문을 통해 대비하세요.
             </h2>
             <p>
-              CS부터 백엔드, AI까지 체계적인 질문과
+              CS부터 프런트엔드, 백엔드, AI까지 체계적인 질문과
               <br />
               깊이 있는 모범답안으로 개념을 내 것으로.
             </p>
@@ -239,43 +240,6 @@ export default function HomePage() {
             <span>모든 질문에는 모범답안과 꼬리질문이 함께 제공돼요.</span>
           </div>
         </section>
-        <aside className="study-guide">
-          <div className="guide-overline">
-            <span>BETTER EVERY DAY</span>
-            <ArrowDownRight size={19} />
-          </div>
-          <h2>
-            잘 준비하는 사람의
-            <br />
-            작은 학습 루틴
-          </h2>
-          <div className="guide-steps">
-            <div>
-              <span>1</span>
-              <p>
-                <strong>먼저, 내 언어로 답해 보세요.</strong>
-                <small>정답을 보기 전 생각을 정리해요.</small>
-              </p>
-            </div>
-            <div>
-              <span>2</span>
-              <p>
-                <strong>모범답안으로 빈틈을 채워요.</strong>
-                <small>핵심 개념과 실무 사례를 연결해요.</small>
-              </p>
-            </div>
-            <div>
-              <span>3</span>
-              <p>
-                <strong>AI와 실전처럼 연습해요.</strong>
-                <small>구체적인 피드백으로 한 단계 더.</small>
-              </p>
-            </div>
-          </div>
-          <Link href="/questions" className="guide-link">
-            나의 첫 질문 만나기 <ArrowRight size={15} />
-          </Link>
-        </aside>
       </div>
       <div className="home-endnote">
         <span className="endnote-symbol">✳</span> 완벽한 답변보다, 어제보다 나아진 답변을 향해.

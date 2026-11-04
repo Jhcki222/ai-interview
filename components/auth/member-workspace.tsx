@@ -467,13 +467,6 @@ export function MemberWorkspace({
                       });
                     }}
                   >
-                    <SpeechInput
-                      value={answerDrafts[key] ?? state.answers[key] ?? ""}
-                      onChange={(value) =>
-                        setAnswerDrafts((previous) => ({ ...previous, [key]: value }))
-                      }
-                      disabled={busy}
-                    />
                     <textarea
                       className="textarea"
                       name="answer"
@@ -483,6 +476,13 @@ export function MemberWorkspace({
                         setAnswerDrafts((previous) => ({ ...previous, [key]: event.target.value }))
                       }
                       maxLength={20000}
+                    />
+                    <SpeechInput
+                      value={answerDrafts[key] ?? state.answers[key] ?? ""}
+                      onChange={(value) =>
+                        setAnswerDrafts((previous) => ({ ...previous, [key]: value }))
+                      }
+                      disabled={busy}
                     />
                     <button className="btn btn-primary" disabled={busy}>
                       답변 저장

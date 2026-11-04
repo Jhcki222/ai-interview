@@ -10,7 +10,8 @@ describe("question content", () => {
         categories.map((c) => [c.id, questions.filter((q) => q.category === c.id).length]),
       ),
     ).toEqual({
-      CS: 104,
+      CS: 106,
+      FRONTEND: 24,
       BACKEND: 104,
       AI: 84,
       PERSONALITY: 32,
@@ -51,6 +52,6 @@ describe("question content", () => {
       ),
     ).toBe(true);
     expect(filterQuestions(questions, { category: "AI", query: "존재하지않는검색어" })).toEqual([]);
-    expect(filterQuestions(questions, {})).toHaveLength(400);
+    expect(filterQuestions(questions, {})).toHaveLength(426);
   });
 });

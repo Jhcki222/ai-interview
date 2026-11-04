@@ -12,14 +12,12 @@ import {
   Command,
   FileText,
   FolderHeart,
-  GraduationCap,
   LayoutDashboard,
   LogOut,
   Menu,
   Moon,
   Search,
   Settings2,
-  ShieldCheck,
   Sun,
   Target,
   X,
@@ -187,6 +185,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             CS 기초
             <ChevronRight size={13} />
           </Link>
+          <Link href="/questions?category=FRONTEND" className="topic-shortcut">
+            <span className="topic-dot dot-teal" />
+            프런트엔드
+            <ChevronRight size={13} />
+          </Link>
           <Link href="/questions?category=BACKEND" className="topic-shortcut">
             <span className="topic-dot dot-blue" />
             백엔드 개발
@@ -199,27 +202,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </Link>
         </div>
         <div className="sidebar-bottom">
-          <div className="sidebar-note">
-            <span className="note-icon">
-              <GraduationCap size={21} />
-            </span>
-            <strong>한 질문씩, 더 단단하게.</strong>
-            <p>
-              오늘의 배움이 다음 면접의
-              <br />
-              자신감이 될 거예요.
-            </p>
-            <Link href="/questions">
-              지금 학습하기 <ArrowUpRight size={14} />
-            </Link>
-          </div>
           <Link href="/settings" className={cn("nav-link", active("/settings") && "active")}>
             <Settings2 size={18} />
             <span>설정</span>
           </Link>
-          <div className="sidebar-footer">
-            Built for your next chapter <span>↗</span>
-          </div>
         </div>
       </aside>
       <div className="app-workspace" inert={mobileOpen}>
@@ -240,10 +226,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <span>{current?.label ?? "면접 준비"}</span>
           </div>
           <div className="topbar-actions">
-            <span className="topbar-status">
-              <span />
-              배움은 계속됩니다
-            </span>
             <Button
               variant="ghost"
               size="icon"
@@ -304,9 +286,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </main>
         <footer className="app-footer">
           <span>© {new Date().getFullYear()} interview.ai</span>
-          <span>
-            <ShieldCheck size={13} /> 나의 가능성을 준비하는 공간
-          </span>
         </footer>
       </div>
     </div>

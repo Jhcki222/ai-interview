@@ -77,3 +77,25 @@ it("returns the original saved snapshot on a concurrent identity collision witho
   ]);
   expect(db.insert).toHaveBeenCalledTimes(1);
 });
+it("accepts frontend category questions for member snapshots", async () => {
+  const saved = {
+    ...question,
+    id: "frontend-react",
+    category: "FRONTEND",
+    subcategory: "React 렌더링",
+    topic: "React state",
+    question: "React 상태 변경은 화면에 어떻게 반영되나요?",
+  };
+  db.insert.mockReturnValue({
+    select: () => ({ single: async () => ({ data: { id: "saved-frontend", question: saved }, error: null }) }),
+  });
+  const response = await POST(
+    new Request("http://localhost/api/me/questions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(saved),
+    }),
+  );
+  expect(response.status).toBe(201);
+  expect(db.insert).toHaveBeenCalledTimes(1);
+});

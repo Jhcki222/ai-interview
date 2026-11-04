@@ -2,6 +2,7 @@ import type { CategoryId } from "../types/question";
 
 export const categoryIds: CategoryId[] = [
   "CS",
+  "FRONTEND",
   "BACKEND",
   "AI",
   "PERSONALITY",
