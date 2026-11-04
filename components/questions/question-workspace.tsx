@@ -149,7 +149,7 @@ export function QuestionWorkspace({
           질문 목록으로 돌아가기
         </Link>
       ) : null}
-      <div className={cn("question-layout", detail && "detail-layout")}>
+      <div className={cn(detail ? "question-detail-layout" : "question-layout")}>
         {!detail && (
           <aside className={cn("question-categories", categoryOpen && "category-open")}>
             <button

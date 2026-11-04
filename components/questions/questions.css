@@ -661,10 +661,22 @@
   font-size: 11px;
   margin: -8px 0 23px;
 }
+.question-detail-layout,
 .detail-layout {
-  grid-template-columns: 1fr;
-  max-width: 1200px;
+  display: block;
   width: 100%;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+.question-detail-layout .questions-main,
+.detail-layout .questions-main {
+  width: 100%;
+  max-width: 100%;
+}
+.question-detail-layout .question-card,
+.detail-layout .question-card {
+  width: 100%;
+  max-width: 100%;
 }
 .question-card-detail .question-card-heading {
   padding: 29px 26px 23px;
