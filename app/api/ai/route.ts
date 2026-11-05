@@ -76,7 +76,7 @@ export async function POST(request: Request) {
       analyze:
         "문서를 분석하라. summary는 400자 이내, skills는 명시된 항목 중 핵심 12개 이하, experiences는 대표 사례 6개 이하로 하고 evidence는 원문에서 짧게 인용하라. uncertainties는 중요한 확인 항목 6개 이내로 간결하게 작성하라. 추론을 사실처럼 쓰지 마라.",
       generate:
-        "설정 count와 정확히 같은 수의 독립 질문을 생성하라. 자기소개서 문장을 되묻거나 경력을 칭찬하는 질문 대신, 전문 인사·기술 면접관처럼 한 번에 핵심을 찌르는 실제 면접 말투를 사용하라. 질문은 1~2문장으로 짧고 구체적으로 쓰고 서로 중복하지 마라. 직무와 면접 유형에 맞춰 기술 원리·설계 트레이드오프·장애 대응·수치와 검증·본인 기여·실패와 학습·협업 갈등·우선순위 판단·지원 동기를 다양하게 다루되, 입력에 없는 경험이나 회사 사실을 전제하지 마라. 분석 근거와 설정된 유형·난이도를 반영하라. 각 질문은 source 근거를 짧게 표시하고 id는 서로 달라야 한다. 학습 자료는 간결하게: summary 80자, interviewAnswer 140자, detailedExplanation 180자, example 100자 이내, 키워드 3~5개. 질문마다 날카로운 꼬리질문 2개를 만들고 각 질문과 답안은 100자/80자 이내로 작성하라.",
+        '최상위는 배열이 아닌 단일 JSON 객체 {"questions":[...]}다. 설정 count와 정확히 같은 수의 독립 질문을 생성하라. 각 모범답안 필드는 1~2문장으로 간결하게 쓰고 꼬리질문은 각 질문마다 정확히2개만 작성하라. 자기소개서 문장을 되묻거나 경력을 칭찬하는 질문 대신, 전문 인사·기술 면접관처럼 한 번에 핵심을 찌르는 실제 면접 말투를 사용하라. 질문은 1~2문장으로 짧고 구체적으로 쓰고 서로 중복하지 마라. 직무와 면접 유형에 맞춰 기술 원리·설계 트레이드오프·장애 대응·수치와 검증·본인 기여·실패와 학습·협업 갈등·우선순위 판단·지원 동기를 다양하게 다루되, 입력에 없는 경험이나 회사 사실을 전제하지 마라. 분석 근거와 설정된 유형·난이도를 반영하라. 각 질문은 source 근거를 짧게 표시하고 id는 서로 달라야 한다. 학습 자료는 간결하게: summary 80자, interviewAnswer 140자, detailedExplanation 180자, example 100자 이내, 키워드 3~5개. 질문마다 날카로운 꼬리질문 2개를 만들고 각 질문과 답안은 100자/80자 이내로 작성하라.',
       evaluate:
         "현재 question과 answer를 평가 대상으로 삼고 history는 앞선 최근 최대3턴의 맥락으로만 참고하라. 과거 답변과 현재 답변을 혼동하지 말고 없는 경력·수치·생략 내용을 추측하지 마라. 현재 답변을 정확성·논리성·구체성·질문 적합성·실무 적용성의 다섯 영역별로 각 0~100점 평가하고 각 영역은 한 번만 포함하라. 근거와 강점·보완점은 실제 답변에 기반해 짧고 날카롭게 작성하라. revisedAnswer는 확인되지 않은 경험이나 성과를 만들지 않는 간결한 개선 예시로 작성하라.",
       followup:
@@ -129,7 +129,7 @@ export async function POST(request: Request) {
                 ...selection,
               });
               const model = getAIModel(selection);
-              const compatible = selection.provider === "nvidia" || selection.provider === "ollama";
+              const compatible = selection.provider !== "openai";
               async function generateOne(
                 callInput: typeof input,
                 extraPrompt = "",

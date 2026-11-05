@@ -1,4 +1,5 @@
 "use client";
+import { MarkdownContent } from "@/components/ui/markdown-content";
 import { memo, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
@@ -175,7 +176,7 @@ export const QuestionCard = memo(function QuestionCard({
               </span>
               <div>
                 <h3>핵심 요약</h3>
-                <p>{q.modelAnswer.summary}</p>
+                <MarkdownContent>{q.modelAnswer.summary}</MarkdownContent>
               </div>
             </div>
             <section className="answer-block">
@@ -183,15 +184,15 @@ export const QuestionCard = memo(function QuestionCard({
                 <span className="answer-label-dot" />
                 30–60초 면접 답변
               </h3>
-              <p>{q.modelAnswer.interviewAnswer}</p>
+              <MarkdownContent>{q.modelAnswer.interviewAnswer}</MarkdownContent>
             </section>
             <section className="answer-block">
               <h3>조금 더 깊이 이해하기</h3>
-              <p>{q.modelAnswer.detailedExplanation}</p>
+              <MarkdownContent>{q.modelAnswer.detailedExplanation}</MarkdownContent>
             </section>
             <section className="answer-block answer-example">
               <h3>실무에서는 이렇게</h3>
-              <p>{q.modelAnswer.example}</p>
+              <MarkdownContent>{q.modelAnswer.example}</MarkdownContent>
             </section>
             <div className="answer-end">
               <span>{q.modelAnswer.keywords.map((k) => `#${k}`).join("  ")}</span>
@@ -223,7 +224,7 @@ export const QuestionCard = memo(function QuestionCard({
                   {follow.question}
                   <ChevronDown size={14} />
                 </summary>
-                <p>{follow.modelAnswer}</p>
+                <MarkdownContent>{follow.modelAnswer}</MarkdownContent>
               </details>
             ))}
           </motion.div>

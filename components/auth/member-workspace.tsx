@@ -1,4 +1,5 @@
 "use client";
+import { MarkdownContent } from "@/components/ui/markdown-content";
 import { LoadingState } from "@/components/ui/loading-state";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -592,14 +593,14 @@ function SavedModelAnswer({ question }: { question: Question }) {
       <div className="saved-answer-content">
         <details>
           <summary>저장한 답변 보기</summary>
-          <p style={{ whiteSpace: "pre-wrap" }}>{question.modelAnswer.interviewAnswer}</p>
+          <MarkdownContent>{question.modelAnswer.interviewAnswer}</MarkdownContent>
         </details>
         {question.followUps
           .filter((item) => !item.id.startsWith("unwritten-follow-up-"))
           .map((item) => (
             <details key={item.id}>
               <summary>{item.question}</summary>
-              <p style={{ whiteSpace: "pre-wrap" }}>{item.modelAnswer}</p>
+              <MarkdownContent>{item.modelAnswer}</MarkdownContent>
             </details>
           ))}
       </div>
@@ -617,7 +618,7 @@ function SavedModelAnswer({ question }: { question: Question }) {
         ].map(([title, content]) => (
           <div key={title}>
             <h3>{title}</h3>
-            <p style={{ whiteSpace: "pre-wrap" }}>{content}</p>
+            <MarkdownContent>{content}</MarkdownContent>
           </div>
         ))}
         <p className="muted">{question.modelAnswer.keywords.join(" · ")}</p>
@@ -627,7 +628,7 @@ function SavedModelAnswer({ question }: { question: Question }) {
           <summary>{followup.question}</summary>
           <details>
             <summary>꼬리질문 답안 보기</summary>
-            <p style={{ whiteSpace: "pre-wrap" }}>{followup.modelAnswer}</p>
+            <MarkdownContent>{followup.modelAnswer}</MarkdownContent>
           </details>
         </details>
       ))}

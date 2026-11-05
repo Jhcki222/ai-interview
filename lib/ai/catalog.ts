@@ -87,7 +87,7 @@ export function chooseSelection(
   requested: Partial<Selection>,
   env: Record<string, string | undefined> = {},
 ): Selection {
-  const provider = requested.provider || (env.AI_PROVIDER as ProviderId) || "nvidia";
+  const provider = requested.provider || (env.AI_PROVIDER as ProviderId) || "groq";
   const entry =
     catalog.find((c) => c.id === provider) || (!requested.provider ? catalog[0] : undefined);
   if (!entry || !entry.models.length) throw new Error("MISSING_CONFIG");

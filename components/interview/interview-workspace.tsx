@@ -1,4 +1,5 @@
 "use client";
+import { MarkdownContent } from "@/components/ui/markdown-content";
 import ThoughtLine from "@/components/ui/ThoughtLine";
 import { LoadingState } from "@/components/ui/loading-state";
 import { useEffect, useRef, useState } from "react";
@@ -57,7 +58,10 @@ const SESSION_KEY = "interview-session-v1";
 export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?: string }) {
   const [customRoleMode, setCustomRoleMode] = useState(false);
   const [questionToSave, setQuestionToSave] = useState<Question | null>(null);
-  const [selection, setSelection] = useState<Selection>();
+  const [selection, setSelection] = useState<Selection>({
+    provider: "groq",
+    model: "openai/gpt-oss-20b",
+  });
   const [allowFallback, setAllowFallback] = useState(true);
   const [aiStatus, setAIStatus] = useState<AIStatus | null>(null);
   const [statusHistory, setStatusHistory] = useState<AIStatus[]>([]);
@@ -101,7 +105,7 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
         setSessionId(restored.id || crypto.randomUUID());
         setPhase(restored.phase);
         setSettings(restored.settings);
-        setSelection(restored.selection);
+        // Start each visit with Groq; interview content is restored independently.
         setAllowFallback(restored.allowFallback);
         setAnalysis(restored.analysis);
         setQuestions(restored.questions);
@@ -1176,9 +1180,7 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
                   <EvaluationCard evaluation={latest.evaluation} />
                   <details>
                     <summary>이 질문의 모범답안</summary>
-                    <p className="interview-prewrap">
-                      {followup?.modelAnswer || questions[index].modelAnswer.interviewAnswer}
-                    </p>
+                    <MarkdownContent>{followup?.modelAnswer || questions[index].modelAnswer.interviewAnswer}</MarkdownContent>
                   </details>
                   <div className="interview-actions">
                     <button
@@ -1271,7 +1273,7 @@ function EvaluationCard({ evaluation }: { evaluation: Evaluation }) {
       <FeedbackList title="보완점" items={evaluation.improvements} />
       <details>
         <summary>개선된 답변 예시</summary>
-        <p className="interview-prewrap">{evaluation.revisedAnswer}</p>
+        <MarkdownContent>{evaluation.revisedAnswer}</MarkdownContent>
       </details>
     </div>
   );
@@ -1310,7 +1312,7 @@ function QuestionCard({
           ].map(([title, text]) => (
             <div key={title}>
               <h3>{title}</h3>
-              <p className="interview-prewrap">{text}</p>
+              <MarkdownContent>{text}</MarkdownContent>
             </div>
           ))}
           <p className="muted">{question.modelAnswer.keywords.join(" · ")}</p>
@@ -1323,7 +1325,7 @@ function QuestionCard({
           </summary>
           <details>
             <summary>꼬리질문 답안 보기</summary>
-            <p className="interview-prewrap">{item.modelAnswer}</p>
+            <MarkdownContent>{item.modelAnswer}</MarkdownContent>
           </details>
         </details>
       ))}

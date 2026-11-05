@@ -4,7 +4,7 @@ import { classifyProviderError, runReliable } from "../lib/ai/reliability";
 describe("provider selection and reliability", () => {
   it("defaults to NVIDIA and rejects models outside the server allowlist", () => {
     const catalog = configuredCatalog({ NVIDIA_API_KEY: "set", GROQ_API_KEY: "set" });
-    expect(chooseSelection(catalog, {}).provider).toBe("nvidia");
+    expect(chooseSelection(catalog, {}).provider).toBe("groq");
     expect(() =>
       chooseSelection(catalog, { provider: "nvidia", model: "https://evil/model" }),
     ).toThrow();

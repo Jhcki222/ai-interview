@@ -51,7 +51,7 @@ export function ModelPicker({
     <section className="panel interview-model-picker">
       <div>
         <h2>AI 모델 선택</h2>
-        <p className="muted">NVIDIA를 기본으로 사용합니다. 연결 가능한 서버 설정만 표시합니다.</p>
+        <p className="muted">기본 모델은 Groq GPT-OSS 20B입니다. NVIDIA 등 다른 제공자도 선택할 수 있습니다.</p>
       </div>
       <aside className="interview-token-notice" role="note">
         <strong>AI 이용 한도를 확인해 주세요</strong>
