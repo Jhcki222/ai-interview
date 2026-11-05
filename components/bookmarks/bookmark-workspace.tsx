@@ -1,4 +1,5 @@
 "use client";
+import { notifyLearningChanged } from "@/lib/learning/progress";
 import { LoadingState } from "@/components/ui/loading-state";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
@@ -118,6 +119,7 @@ export function BookmarkWorkspace() {
       if (ownerRef.current !== requestOwner || controller.signal.aborted)
         throw new DOMException("Account changed", "AbortError");
       if (!response.ok) throw new Error(result.error || "변경하지 못했어요. 다시 시도해 주세요.");
+      if (requestOwner && method !== "GET") notifyLearningChanged(requestOwner);
       return result;
     } finally {
       operations.current.delete(controller);

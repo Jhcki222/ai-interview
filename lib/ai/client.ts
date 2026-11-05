@@ -1,5 +1,6 @@
 "use client";
 import { z } from "zod";
+import { harnessEventSchema, type HarnessEvent } from "./harness/events";
 import type { Selection } from "./catalog";
 import type { AIStatus } from "./reliability";
 export class AIRequestError extends Error {
@@ -21,6 +22,7 @@ export async function requestAI<T>(
     selection?: Selection;
     allowFallback?: boolean;
     onStatus?: (status: AIStatus) => void;
+    onHarness?: (event: HarnessEvent) => void;
   },
 ): Promise<T> {
   try {
@@ -80,6 +82,10 @@ export async function requestAI<T>(
             .join("\n");
           if (!data) continue;
           const payload = JSON.parse(data);
+          if (event === "harness") {
+            const record = harnessEventSchema.safeParse(payload);
+            if (record.success) options?.onHarness?.(record.data);
+          }
           if (event === "status") {
             options?.onStatus?.(payload);
             onProgress(payload.message);

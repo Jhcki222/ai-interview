@@ -1,13 +1,11 @@
+import { executeHarness } from "@/lib/ai/harness/runtime";
+import { toolFor } from "@/lib/ai/harness/tools";
+import { routeInterview } from "@/lib/ai/agent-graph";
 import { questionBatchPlan, combineQuestionBatches } from "@/lib/ai/batches";
 import { isSameAIOrigin } from "@/lib/ai/origin";
 import { getAIModel, getModelCatalog } from "@/lib/ai/provider";
 import { chooseSelection, fallbackSelections } from "@/lib/ai/catalog";
-import {
-  runReliable,
-  ProviderFailure,
-  classifyProviderError,
-  type AIStatus,
-} from "@/lib/ai/reliability";
+import { ProviderFailure, classifyProviderError, type AIStatus } from "@/lib/ai/reliability";
 import { streamText, generateText, Output } from "ai";
 
 import { z } from "zod";
@@ -58,16 +56,8 @@ export async function POST(request: Request) {
       );
     }
     await consumeUsage(request);
-    const schema: z.ZodType =
-      input.action === "analyze"
-        ? analysisSchema
-        : input.action === "generate"
-          ? generationSchema
-          : input.action === "evaluate"
-            ? evaluationSchema
-            : input.action === "followup"
-              ? followupSchema
-              : summarySchema;
+    const tool = toolFor(input.action);
+    const schema: z.ZodType = tool.schema;
     const targeting =
       input.action === "analyze" || input.action === "generate"
         ? `산업·기관 유형 ${input.settings.industry || "미지정"}, 지원 기업 ${input.settings.company || "미지정"}, 부문 ${input.settings.division || "미지정"}, 직무 ${input.settings.role}, 경력 ${input.settings.level}, 면접 유형 ${input.settings.interviewType}, 난이도 ${input.settings.difficulty}를 반영하라. 채용 공고는 입력 settings.jobPosting의 실제 기재 요구만 활용하며 기업에 대한 확인되지 않은 사실을 만들지 마라.`
@@ -80,17 +70,11 @@ export async function POST(request: Request) {
       evaluate:
         "현재 question과 answer를 평가 대상으로 삼고 history는 앞선 최근 최대3턴의 맥락으로만 참고하라. 과거 답변과 현재 답변을 혼동하지 말고 없는 경력·수치·생략 내용을 추측하지 마라. 현재 답변을 정확성·논리성·구체성·질문 적합성·실무 적용성의 다섯 영역별로 각 0~100점 평가하고 각 영역은 한 번만 포함하라. 근거와 강점·보완점은 실제 답변에 기반해 짧고 날카롭게 작성하라. revisedAnswer는 확인되지 않은 경험이나 성과를 만들지 않는 간결한 개선 예시로 작성하라.",
       followup:
-        "현재 question과 answer에서 근거·판단·검증이 빠진 지점을 하나만 골라 짧고 날카로운 꼬리질문을 하라. 최근 최대3턴은 중복 방지 맥락으로만 쓰고 충분히 답한 내용은 반복하지 마라. 이유와 모범답안도 간결하게 작성하며 확인되지 않은 경력이나 성과를 만들지 마라.",
+        "입력 focus가 있으면 해당 평가 영역을 중점으로 확인하라. 현재 question과 answer에서 근거·판단·검증이 빠진 지점을 하나만 골라 짧고 날카로운 꼬리질문을 하라. 최근 최대3턴은 중복 방지 맥락으로만 쓰고 충분히 답한 내용은 반복하지 마라. 이유와 모범답안도 간결하게 작성하며 확인되지 않은 경력이나 성과를 만들지 마라.",
       summary:
         "입력은 각 면접 턴의 답변 발췌와 개별 평가 근거다. 생략된 내용을 추측하지 말고 모든 턴의 다섯 영역 점수와 근거를 고려해 실행 가능한 최종 피드백과 짧은 학습 계획을 제공하라.",
     }[input.action];
-    const outputTokenLimit = {
-      analyze: 2800,
-      generate: 6000,
-      evaluate: 2200,
-      followup: 1000,
-      summary: 2200,
-    }[input.action];
+    const outputTokenLimit = tool.maxOutputTokens;
 
     const stream = new ReadableStream({
       async start(controller) {
@@ -114,14 +98,14 @@ export async function POST(request: Request) {
             message: "선택한 모델과 요청 형식을 확인했습니다.",
             ...selected,
           });
-          const validated = await runReliable({
+          const validated = await executeHarness({
+            input,
+            runId: correlationId,
+            onEvent: (event) => send("harness", event),
             candidates: fallbackSelections(catalog, selected),
-            allowFallback: input.allowFallback,
             signal: abort,
             budgetMs: Math.max(1000, 105000 - (Date.now() - started)),
             onStatus: status,
-            attemptTimeoutMs: (selection) =>
-              input.action === "generate" && selection.provider === "nvidia" ? 75000 : 30000,
             operation: async (selection, attemptSignal) => {
               status({
                 state: "processing",
@@ -159,15 +143,7 @@ export async function POST(request: Request) {
                   }
                   return result.output;
                 }
-                if (compatible) {
-                  const result = await generateText({ ...options, output: Output.json() });
-                  return result.output;
-                }
-                const result = await generateText({
-                  ...options,
-                  output: Output.object({ schema }),
-                  providerOptions: { groq: { structuredOutputs: true, strictJsonSchema: true } },
-                });
+                const result = await generateText({ ...options, output: Output.json() });
                 return result.output;
               }
               let output: unknown;
@@ -196,25 +172,7 @@ export async function POST(request: Request) {
                 message: "AI 응답의 항목과 형식을 검증하고 있습니다.",
                 ...selection,
               });
-              const completed = schema.parse(output);
-              if (input.action === "generate") {
-                const value = generationSchema.parse(completed);
-                if (
-                  value.questions.length !== input.settings.count ||
-                  new Set(value.questions.map((q) => q.id)).size !== value.questions.length
-                )
-                  throw Object.assign(new Error("Invalid response"), {
-                    name: "AI_TypeValidationError",
-                  });
-              }
-              if (
-                input.action === "evaluate" &&
-                new Set(evaluationSchema.parse(completed).dimensions.map((d) => d.name)).size !== 5
-              )
-                throw Object.assign(new Error("Invalid dimensions"), {
-                  name: "AI_TypeValidationError",
-                });
-              return completed;
+              return output;
             },
           });
           const completed = validated.value;
@@ -223,7 +181,15 @@ export async function POST(request: Request) {
             message: "응답 생성과 검증을 완료했습니다.",
             ...validated.selection,
           });
-          send("complete", completed);
+          send(
+            "complete",
+            input.action === "evaluate" && input.agentContext
+              ? {
+                  ...evaluationSchema.parse(completed),
+                  agentDecision: routeInterview(completed, input.agentContext),
+                }
+              : completed,
+          );
         } catch (error) {
           const detail =
             error instanceof ProviderFailure

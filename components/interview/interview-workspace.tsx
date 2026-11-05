@@ -1,4 +1,6 @@
 "use client";
+import type { HarnessEvent } from "@/lib/ai/harness/events";
+import { agentDecisionSchema, type AgentDecision } from "@/lib/ai/agent-contract";
 import { MarkdownContent } from "@/components/ui/markdown-content";
 import ThoughtLine from "@/components/ui/ThoughtLine";
 import { LoadingState } from "@/components/ui/loading-state";
@@ -63,6 +65,9 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
     model: "openai/gpt-oss-20b",
   });
   const [allowFallback, setAllowFallback] = useState(true);
+  const [harnessEvents, setHarnessEvents] = useState<HarnessEvent[]>([]);
+  const [agentEnabled, setAgentEnabled] = useState(true);
+  const [agentDecision, setAgentDecision] = useState<AgentDecision | null>(null);
   const [aiStatus, setAIStatus] = useState<AIStatus | null>(null);
   const [statusHistory, setStatusHistory] = useState<AIStatus[]>([]);
   const [elapsed, setElapsed] = useState(0);
@@ -181,7 +186,13 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
     const timer = setInterval(() => setElapsed(Math.floor((Date.now() - started) / 1000)), 1000);
     return () => clearInterval(timer);
   }, [busy]);
+  function handleHarness(event: HarnessEvent) {
+    setHarnessEvents((previous) =>
+      previous.at(-1)?.runId === event.runId ? [...previous.slice(-59), event] : [event],
+    );
+  }
   function handleStatus(value: AIStatus) {
+    if (value.state === "initializing") setHarnessEvents([]);
     setAIStatus(value);
     setStatusHistory((previous) =>
       value.state === "initializing" ? [value] : [...previous.slice(-9), value],
@@ -213,7 +224,7 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
         controller.current.signal,
         setProgress,
         setPreview,
-        { selection, allowFallback, onStatus: handleStatus },
+        { selection, allowFallback, onStatus: handleStatus, onHarness: handleHarness },
       );
       success(result);
       retry.current = null;
@@ -311,6 +322,7 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
       "GENERATING",
       "REVIEW",
       (value) => {
+        setAgentDecision(null);
         setQuestions(namespaceQuestions(value.questions, sessionId));
         setIndex(0);
         setTurns([]);
@@ -326,12 +338,26 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
     if (!draft.trim() || !currentQuestion) return;
     const question = currentQuestion;
     const answer = draft;
+    setAgentDecision(null);
     void run(
-      buildConversationRequest("evaluate", question, answer, turns),
-      evaluationSchema,
+      {
+        ...buildConversationRequest("evaluate", question, answer, turns),
+        ...(agentEnabled
+          ? {
+              agentContext: {
+                questionIndex: index,
+                questionCount: questions.length,
+                followupCount,
+                turnCount: turns.length + 1,
+              },
+            }
+          : {}),
+      },
+      evaluationSchema.extend({ agentDecision: agentDecisionSchema.optional() }),
       "EVALUATING",
       "ANSWERING",
       (evaluation) => {
+        setAgentDecision(evaluation.agentDecision ?? null);
         setTurns((previous) => [...previous, { question, answer, evaluation }]);
         setDraft("");
         move("FEEDBACK");
@@ -351,13 +377,24 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
     );
     try {
       const value = await requestAI(
-        buildConversationRequest("followup", latest.question, latest.answer, turns.slice(0, -1)),
+        {
+          ...buildConversationRequest(
+            "followup",
+            latest.question,
+            latest.answer,
+            turns.slice(0, -1),
+          ),
+          ...(agentEnabled && agentDecision?.action === "followup"
+            ? { focus: agentDecision.focus }
+            : {}),
+        },
         followupSchema,
         controller.current.signal,
         setProgress,
         setPreview,
-        { selection, allowFallback, onStatus: handleStatus },
+        { selection, allowFallback, onStatus: handleStatus, onHarness: handleHarness },
       );
+      setAgentDecision(null);
       setFollowup(value);
       setFollowupCount((n) => n + 1);
       move("ANSWERING");
@@ -372,6 +409,7 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
     }
   }
   function next() {
+    setAgentDecision(null);
     setFollowup(null);
     setFollowupCount(0);
     setIndex((i) => i + 1);
@@ -384,6 +422,7 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
     });
   }
   function reset() {
+    setAgentDecision(null);
     controller.current?.abort();
     try {
       sessionStorage.removeItem(SESSION_KEY);
@@ -499,7 +538,7 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
         controller.current.signal,
         setProgress,
         setPreview,
-        { selection, allowFallback, onStatus: handleStatus },
+        { selection, allowFallback, onStatus: handleStatus, onHarness: handleHarness },
       );
       setLearningEvaluations((previous) => ({ ...previous, [question.id]: evaluation }));
     } catch (e) {
@@ -586,6 +625,27 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
           </li>
         ))}
       </ol>
+      {settings.mode === "chat" && (
+        <section className="agent-mode-panel">
+          <label>
+            <input
+              type="checkbox"
+              role="switch"
+              checked={agentEnabled}
+              disabled={busy}
+              onChange={(event) => {
+                setAgentEnabled(event.target.checked);
+                setAgentDecision(null);
+              }}
+            />
+            <span>
+              <strong>면접 에이전트</strong>
+              <small>답변 평가를 바탕으로 꼬리질문·다음 질문·종합 평가를 제안합니다.</small>
+            </span>
+          </label>
+          <p>진행 흐름: 문서 분석 → 질문 생성 → 답변 평가 → 검증 → 다음 행동 결정</p>
+        </section>
+      )}
       <ModelPicker
         selection={selection}
         onChange={setSelection}
@@ -593,6 +653,49 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
         onFallbackChange={setAllowFallback}
         disabled={busy}
       />
+      {harnessEvents.length > 0 && (
+        <details className="harness-run-panel">
+          <summary>
+            실행 기록 ·{" "}
+            {harnessEvents.at(-1)?.stage === "completed"
+              ? "검증 완료"
+              : harnessEvents.at(-1)?.stage === "failed"
+                ? "실패"
+                : harnessEvents.at(-1)?.stage === "cancelled"
+                  ? "취소"
+                  : "진행 중"}{" "}
+            · {harnessEvents.length}개 단계
+          </summary>
+          <p>요청 ID: {harnessEvents[0].runId}</p>
+          <ol>
+            {harnessEvents.map((event) => (
+              <li key={`${event.runId}-${event.sequence}`}>
+                <strong>
+                  {
+                    {
+                      accepted: "입력 계약 확인",
+                      connecting: "제공자 연결",
+                      processing: "모델 실행",
+                      retrying: "재시도",
+                      fallback: "대체 모델 전환",
+                      validating: "출력 계약 검증",
+                      completed: "실행 완료",
+                      failed: "실행 실패",
+                      cancelled: "실행 취소",
+                    }[event.stage]
+                  }
+                </strong>
+                <span>
+                  {(event.elapsedMs / 1000).toFixed(1)}초
+                  {event.provider ? ` · ${event.provider} / ${event.model}` : ""}
+                  {event.code ? ` · ${event.code}` : ""}
+                </span>
+              </li>
+            ))}
+          </ol>
+          <small>문서·답변 원문과 API 키는 실행 기록에 포함하지 않습니다.</small>
+        </details>
+      )}
       {aiStatus && (
         <section className="interview-ai-status" role="status">
           <ThoughtLine
@@ -1178,9 +1281,70 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
                   <h3>나의 답변</h3>
                   <p className="interview-prewrap">{latest.answer}</p>
                   <EvaluationCard evaluation={latest.evaluation} />
+                  {agentEnabled && agentDecision && (
+                    <section className="agent-decision-panel" aria-label="면접 에이전트 진행 제안">
+                      <p className="eyebrow">INTERVIEW AGENT</p>
+                      <h3>
+                        {agentDecision.action === "followup"
+                          ? "이 부분을 조금 더 확인할게요"
+                          : agentDecision.action === "next"
+                            ? "다음 주제로 넘어갈 준비가 됐어요"
+                            : "면접을 정리할 시간이에요"}
+                      </h3>
+                      <p>{agentDecision.reason}</p>
+                      <small>
+                        AI 평가에 따른 진행 제안입니다. 점수는 채용 판단이 아니며, 아래 수동 진행
+                        버튼도 사용할 수 있습니다.
+                      </small>
+                      <details>
+                        <summary>에이전트 실행 과정</summary>
+                        <ol>
+                          {agentDecision.trace.map((entry) => (
+                            <li key={entry.node}>
+                              <strong>
+                                {
+                                  {
+                                    evaluate: "답변 평가",
+                                    validate: "출력 검증",
+                                    route: "그래프 분기",
+                                    await_confirmation: "사용자 확인",
+                                  }[entry.node]
+                                }
+                              </strong>
+                              <span>{entry.detail}</span>
+                            </li>
+                          ))}
+                        </ol>
+                        <p>
+                          현재 질문 {index + 1}/{questions.length} · 꼬리질문 {followupCount}/2 ·
+                          전체 {turns.length}/44턴
+                        </p>
+                      </details>
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        disabled={busy}
+                        onClick={() => {
+                          if (agentDecision.action === "followup") void askFollowup();
+                          else if (agentDecision.action === "next") next();
+                          else finish();
+                        }}
+                      >
+                        {agentDecision.action === "followup"
+                          ? "제안대로 꼬리질문 받기"
+                          : agentDecision.action === "next"
+                            ? "제안대로 다음 질문"
+                            : "제안대로 종합 평가"}{" "}
+                        →
+                      </button>
+                    </section>
+                  )}
+
                   <details>
                     <summary>이 질문의 모범답안</summary>
-                    <MarkdownContent>{followup?.modelAnswer || questions[index].modelAnswer.interviewAnswer}</MarkdownContent>
+                    <MarkdownContent>
+                      {followup?.modelAnswer || questions[index].modelAnswer.interviewAnswer}
+                    </MarkdownContent>
                   </details>
                   <div className="interview-actions">
                     <button

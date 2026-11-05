@@ -1,4 +1,5 @@
 "use client";
+import { notifyLearningChanged } from "@/lib/learning/progress";
 import { MarkdownContent } from "@/components/ui/markdown-content";
 import { LoadingState } from "@/components/ui/loading-state";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -136,6 +137,7 @@ export function MemberWorkspace({
       )
         return;
       if (!response.ok) throw new Error(result.error);
+      notifyLearningChanged(requestOwner);
       setEditing(null);
       await load();
     } catch (e) {

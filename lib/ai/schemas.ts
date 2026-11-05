@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { agentContextSchema } from "./agent-contract";
 import { savedQuestionSchema } from "../auth/validation";
 const text = z.string().trim().min(1).max(8000);
 // Member validation is client-safe and owns the persistence bounds for every question field.
@@ -81,12 +82,14 @@ const coreRequestSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("generate"), analysis: analysisSchema, settings: settingsSchema }),
   z.object({
     action: z.literal("evaluate"),
+    agentContext: agentContextSchema.optional(),
     question: z.string().min(1).max(8000),
     answer: z.string().min(1).max(8000),
     history: conversationHistorySchema.default([]),
   }),
   z.object({
     action: z.literal("followup"),
+    focus: z.enum(["정확성", "논리성", "구체성", "질문 적합성", "실무 적용성"]).optional(),
     question: z.string().min(1).max(8000),
     answer: z.string().min(1).max(8000),
     history: conversationHistorySchema.default([]),

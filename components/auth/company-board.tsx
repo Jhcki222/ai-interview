@@ -77,8 +77,7 @@ export function CompanyBoard({
           <span className="company-kicker">
             <FolderOpen size={14} /> MY QUESTION COLLECTIONS
           </span>
-          <h2>기업마다, 더 가까운 준비.</h2>
-          <p>회사 별 면접 관리을 지원 기업별로 모아두세요.</p>
+          <h2>기업 별로 면접을 체계적으로 준비하세요.</h2>
         </div>
         <button className="btn btn-primary" onClick={() => create()}>
           <Plus size={16} />

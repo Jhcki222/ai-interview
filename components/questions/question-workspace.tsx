@@ -129,13 +129,9 @@ export function QuestionWorkspace({
       </div>
       <div className="questions-page-title">
         <div>
-          <h1 className="page-heading">
-            {detail ? "질문 상세" : "면접 질문"}
-          </h1>
+          <h1 className="page-heading">{detail ? "질문 상세" : "면접 질문"}</h1>
           <p className="muted">
-            {detail
-              ? "질문과 답변을 확인하세요."
-              : "분야별 질문을 확인하고 답변을 연습하세요."}
+            {detail ? "질문과 답변을 확인하세요." : "분야별 질문을 확인하고 답변을 연습하세요."}
           </p>
         </div>
         <span className="question-total">
@@ -212,12 +208,13 @@ export function QuestionWorkspace({
                   학습 진행률
                 </span>
                 <strong>
-                  {completed}
+                  {learning.loaded ? completed : "…"}
                   <small> / {questions.length} 완료</small>
                 </strong>
                 <div className="mini-progress">
                   <span style={{ width: `${(completed / questions.length) * 100}%` }} />
                 </div>
+                <p>‘학습 완료’로 표시한 기본 질문을 집계합니다.</p>
                 {!user && <p>로그인하면 답변과 학습 상태를 저장할 수 있습니다.</p>}
               </div>
             </div>
@@ -369,7 +366,10 @@ export function QuestionWorkspace({
           <div className="question-list">
             {visible.map((q, index) => {
               const key = `base:${q.id}`;
-              const busy = learning.busy === key || (!!user && !learning.loaded);
+              const busy =
+                learning.busy === key ||
+                learning.pendingProgress.has(key) ||
+                (!!user && !learning.loaded);
               return (
                 <motion.div
                   key={q.id}

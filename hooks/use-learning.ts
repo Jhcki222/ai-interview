@@ -11,6 +11,7 @@ import {
 } from "@/lib/learning/session";
 import type { Progress, Question } from "@/types/question";
 import { buildImportBatches } from "@/lib/learning/import";
+import { mergeProgress, LEARNING_CHANGED, notifyLearningChanged } from "@/lib/learning/progress";
 const empty = (): LearningData => ({ answers: {}, progress: {} });
 export function useLearning() {
   const { user, loading: authLoading } = useAuth();
@@ -29,6 +30,9 @@ export function useLearning() {
   const identity = user?.id ?? null;
   const identityRef = useRef(identity);
   identityRef.current = identity;
+  const eventSource = useRef({});
+  const progressLocks = useRef(new Map<string, object>());
+  const [pendingProgress, setPendingProgress] = useState(new Set<string>());
   const mutations = useRef(new Set<AbortController>());
   const [ready, setReady] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -68,13 +72,15 @@ export function useLearning() {
     setError("");
     setNotice("");
     setBusy(null);
+    progressLocks.current.clear();
+    setPendingProgress(new Set());
     if (!user) {
       setLoading(false);
       return;
     }
     const controller = new AbortController();
     setLoading(true);
-    fetch("/api/me/state", { signal: controller.signal })
+    fetch("/api/me/state", { signal: controller.signal, cache: "no-store" })
       .then(async (response) => {
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || "학습 정보를 불러오지 못했어요.");
@@ -99,6 +105,24 @@ export function useLearning() {
       identityRef.current = null;
     };
   }, [user?.id, reloadToken]);
+  useEffect(() => {
+    const refresh = () => {
+      if (identity && document.visibilityState !== "hidden" && mutations.current.size === 0)
+        setReloadToken((value) => value + 1);
+    };
+    const changed = (event: Event) => {
+      const detail = (event as CustomEvent).detail;
+      if (detail?.owner === identity && detail?.source !== eventSource.current) refresh();
+    };
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    window.addEventListener(LEARNING_CHANGED, changed);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+      window.removeEventListener(LEARNING_CHANGED, changed);
+    };
+  }, [identity]);
   async function request(url: string, body: unknown, method = "POST", owner = identity) {
     if (!owner || identityRef.current !== owner)
       throw new DOMException("Account changed", "AbortError");
@@ -185,24 +209,43 @@ export function useLearning() {
   }
   async function updateProgress(key: string, patch: Partial<Progress>) {
     if (user && !loaded) return;
-    const current = data.progress[key] ?? { status: "NOT_STARTED" as const, bookmarked: false };
-    const next = { ...current, ...patch };
     if (!user) {
-      setGuest((previous) => ({ ...previous, progress: { ...previous.progress, [key]: next } }));
+      setGuest((previous) => ({
+        ...previous,
+        progress: { ...previous.progress, [key]: mergeProgress(previous.progress[key], patch) },
+      }));
       setNotice("현재 탭에 학습 상태를 임시 보관했어요.");
       return;
     }
-    setBusy(key);
+    if (progressLocks.current.has(key)) return;
+    const lock = {};
+    progressLocks.current.set(key, lock);
+    setPendingProgress(new Set(progressLocks.current.keys()));
     setError("");
     try {
       await request("/api/me/progress", { question_key: key, ...patch });
-      setMember((previous) => ({ ...previous, progress: { ...previous.progress, [key]: next } }));
+      setMember((previous) =>
+        previous.owner === identity
+          ? {
+              ...previous,
+              progress: {
+                ...previous.progress,
+                [key]: mergeProgress(previous.progress[key], patch),
+              },
+            }
+          : previous,
+      );
+      notifyLearningChanged(identity!, eventSource.current);
       setNotice("학습 상태를 저장했어요.");
     } catch (e) {
       if (identityRef.current === identity)
         setError(e instanceof Error ? e.message : "학습 상태 저장에 실패했어요.");
     } finally {
-      if (identityRef.current === identity) setBusy(null);
+      if (progressLocks.current.get(key) === lock) {
+        progressLocks.current.delete(key);
+        if (identityRef.current === identity)
+          setPendingProgress(new Set(progressLocks.current.keys()));
+      }
     }
   }
   async function saveQuestion(question: Question) {
@@ -274,6 +317,7 @@ export function useLearning() {
     loaded,
     reload: () => setReloadToken((value) => value + 1),
     busy,
+    pendingProgress,
     error,
     notice,
     editAnswer,
