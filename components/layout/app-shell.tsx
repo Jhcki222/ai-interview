@@ -31,7 +31,7 @@ const mainLinks = [
   { href: "/interview", label: "AI 모의면접", icon: AudioLines, badge: "Beta" },
 ];
 const personalLinks = [
-  { href: "/my/questions", label: "내가 만든 질문", icon: FolderHeart },
+  { href: "/my/questions", label: "회사 별 면접 관리", icon: FolderHeart },
   { href: "/my/answers", label: "작성한 답변", icon: FileText },
   { href: "/my/bookmarks", label: "북마크", icon: Bookmark },
   { href: "/my/progress", label: "학습 현황", icon: Target },

@@ -1,4 +1,5 @@
 "use client";
+import { LoadingState } from "@/components/ui/loading-state";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -216,13 +217,13 @@ export function MemberWorkspace({
     );
   });
   const titles = {
-    questions: "내가 만든 질문",
+    questions: "회사 별 면접 관리",
     answers: "내 답변",
     bookmarks: "북마크",
     progress: "학습 현황",
   };
   const empty = view === "questions" ? visibleSaved.length === 0 : keys.length === 0;
-  if (authLoading) return <p role="status">계정을 확인하는 중…</p>;
+  if (authLoading) return <LoadingState compact label="계정을 확인하는 중…" />;
   if (!configured || !ownerId)
     return (
       <section className="panel empty-state">
@@ -249,7 +250,7 @@ export function MemberWorkspace({
             </button>
           </div>
         ) : (
-          <p role="status">내 기록을 불러오는 중…</p>
+          <LoadingState compact label="내 기록을 불러오는 중…" />
         )}
       </section>
     );
@@ -262,7 +263,7 @@ export function MemberWorkspace({
           ? "지원할 기업을 추가하고, 기업별로 나만의 면접 질문을 준비하세요."
           : "내 계정에 저장된 실제 학습 기록입니다."}
       </p>
-      {loading && <p role="status">불러오는 중…</p>}
+      {loading && <LoadingState compact label="불러오는 중…" />}
       {error && (
         <div role="alert" className="panel">
           <p>{error}</p>
@@ -389,58 +390,63 @@ export function MemberWorkspace({
                   <h2>{row.question.question}</h2>
                   <SavedModelAnswer question={row.question} />
                   {row.note && <p style={{ whiteSpace: "pre-wrap" }}>{row.note}</p>}
-                  <label className="company-assignment">
-                    기업 폴더
-                    <select
-                      className="select"
-                      value={row.company_id ?? ""}
-                      disabled={busy}
-                      onChange={(event) =>
-                        void mutate(`/api/me/questions/${row.id}`, "PATCH", {
-                          company_id: event.target.value || null,
-                        })
-                      }
-                    >
-                      <option value="">미분류</option>
-                      {companies.map((company) => (
-                        <option key={company.id} value={company.id}>
-                          {company.name}
-                          {company.position ? ` · ${company.position}` : ""}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <SavedQuestionControls
-                    id={row.id}
-                    answer={state.answers[`saved:${row.id}`]}
-                    progress={state.progress[`saved:${row.id}`]}
-                    busy={busy}
-                    onMutate={mutate}
-                  />
-                  <div style={{ display: "flex", gap: 8, marginTop: 16, flexWrap: "wrap" }}>
-                    <button
-                      className="btn btn-secondary"
-                      disabled={busy}
-                      onClick={() => setEditing(row.id)}
-                    >
-                      {isCompactManualQuestion(row.question) ? "질문·답변 수정" : "질문·답안·메모 편집"}
-                    </button>
-                    <button
-                      className="btn btn-secondary"
-                      disabled={busy}
-                      onClick={() => {
-                        if (confirm("이 질문과 연결된 답변·학습 기록을 삭제할까요?"))
-                          void mutate(`/api/me/questions/${row.id}`, "DELETE");
-                      }}
-                    >
-                      삭제
-                    </button>
+                  <div className="saved-card-toolbar">
+                    <label className="company-assignment">
+                      기업 폴더
+                      <select
+                        className="select"
+                        value={row.company_id ?? ""}
+                        disabled={busy}
+                        onChange={(event) =>
+                          void mutate(`/api/me/questions/${row.id}`, "PATCH", {
+                            company_id: event.target.value || null,
+                          })
+                        }
+                      >
+                        <option value="">미분류</option>
+                        {companies.map((company) => (
+                          <option key={company.id} value={company.id}>
+                            {company.name}
+                            {company.position ? ` · ${company.position}` : ""}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <SavedQuestionControls
+                      id={row.id}
+                      answer={state.answers[`saved:${row.id}`]}
+                      progress={state.progress[`saved:${row.id}`]}
+                      busy={busy}
+                      onMutate={mutate}
+                    />
+                    <div className="saved-card-actions">
+                      <button
+                        className="btn btn-secondary"
+                        disabled={busy}
+                        onClick={() => setEditing(row.id)}
+                      >
+                        {isCompactManualQuestion(row.question)
+                          ? "질문·답변 수정"
+                          : "질문·답안·메모 편집"}
+                      </button>
+                      <button
+                        className="btn btn-secondary"
+                        disabled={busy}
+                        onClick={() => {
+                          if (confirm("이 질문과 연결된 답변·학습 기록을 삭제할까요?"))
+                            void mutate(`/api/me/questions/${row.id}`, "DELETE");
+                        }}
+                      >
+                        삭제
+                      </button>
+                    </div>
                   </div>
                 </>
               )}
             </article>
           ))
-        : keys.map((key) => {
+        : view !== "progress" &&
+          keys.map((key) => {
             const question = lookup(key)!;
             return (
               <article
@@ -460,6 +466,7 @@ export function MemberWorkspace({
                 </Link>
                 {view === "answers" ? (
                   <form
+                    className="member-answer-form"
                     onSubmit={(event) => {
                       event.preventDefault();
                       void mutate("/api/me/answers", "POST", {
@@ -468,7 +475,13 @@ export function MemberWorkspace({
                       });
                     }}
                   >
+                    <label className="member-answer-label" htmlFor={`answer-${key}`}>
+                      작성한 답변
+                    </label>
                     <textarea
+                      id={`answer-${key}`}
+                      rows={5}
+                      disabled={busy}
                       className="textarea"
                       name="answer"
                       aria-label="내 답변"
@@ -478,33 +491,39 @@ export function MemberWorkspace({
                       }
                       maxLength={20000}
                     />
-                    <SpeechInput
-                      value={answerDrafts[key] ?? state.answers[key] ?? ""}
-                      onChange={(value) =>
-                        setAnswerDrafts((previous) => ({ ...previous, [key]: value }))
-                      }
-                      disabled={busy}
-                    />
-                    <button className="btn btn-primary" disabled={busy}>
-                      답변 저장
-                    </button>{" "}
-                    <button
-                      className="btn btn-secondary"
-                      type="button"
-                      disabled={busy}
-                      onClick={() => {
-                        if (confirm("답변을 삭제할까요?"))
-                          void mutate(
-                            `/api/me/answers?question_key=${encodeURIComponent(key)}`,
-                            "DELETE",
-                          );
-                      }}
-                    >
-                      답변 삭제
-                    </button>
+                    <div className="member-answer-footer">
+                      <div className="member-answer-speech">
+                        <SpeechInput
+                          value={answerDrafts[key] ?? state.answers[key] ?? ""}
+                          onChange={(value) =>
+                            setAnswerDrafts((previous) => ({ ...previous, [key]: value }))
+                          }
+                          disabled={busy}
+                        />
+                      </div>
+                      <div className="member-answer-buttons">
+                        <button className="btn btn-primary" disabled={busy}>
+                          답변 저장
+                        </button>
+                        <button
+                          className="btn btn-secondary"
+                          type="button"
+                          disabled={busy}
+                          onClick={() => {
+                            if (confirm("답변을 삭제할까요?"))
+                              void mutate(
+                                `/api/me/answers?question_key=${encodeURIComponent(key)}`,
+                                "DELETE",
+                              );
+                          }}
+                        >
+                          답변 삭제
+                        </button>
+                      </div>
+                    </div>
                   </form>
                 ) : (
-                  <div style={{ display: "flex", gap: 12, marginTop: 16, flexWrap: "wrap" }}>
+                  <div className="member-learning-actions">
                     <label>
                       학습 상태
                       <select
@@ -570,10 +589,20 @@ export function MemberWorkspace({
 function SavedModelAnswer({ question }: { question: Question }) {
   if (isCompactManualQuestion(question)) {
     return (
-      <details>
-        <summary>답변 보기</summary>
-        <p style={{ whiteSpace: "pre-wrap" }}>{question.modelAnswer.interviewAnswer}</p>
-      </details>
+      <div className="saved-answer-content">
+        <details>
+          <summary>저장한 답변 보기</summary>
+          <p style={{ whiteSpace: "pre-wrap" }}>{question.modelAnswer.interviewAnswer}</p>
+        </details>
+        {question.followUps
+          .filter((item) => !item.id.startsWith("unwritten-follow-up-"))
+          .map((item) => (
+            <details key={item.id}>
+              <summary>{item.question}</summary>
+              <p style={{ whiteSpace: "pre-wrap" }}>{item.modelAnswer}</p>
+            </details>
+          ))}
+      </div>
     );
   }
   return (

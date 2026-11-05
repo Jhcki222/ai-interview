@@ -17,9 +17,8 @@ import {
   UserRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { categories, questions } from "@/lib/questions";
+import { questions } from "@/lib/questions";
 import { TopicCarousel } from "@/components/home/topic-carousel";
-const categoryIcons = [Cpu, Monitor, Code2, BrainCircuit, MessagesSquare, UserRound, Layers3, GitBranch];
 export default function HomePage() {
   const featured = ["CS", "FRONTEND", "BACKEND"]
     .map((category) => questions.find((q) => q.category === category))
@@ -173,7 +172,7 @@ export default function HomePage() {
           <div>
             <h2>
               어떤 주제를 준비할까요?
-              <span className="section-caption">원하는 주제를 돌려보거나 아래에서 바로 선택하세요.</span>
+              <span className="section-caption">관심 있는 주제를 선택하고 면접 준비를 시작하세요.</span>
             </h2>
           </div>
           <Link className="text-link" href="/questions">
@@ -181,27 +180,7 @@ export default function HomePage() {
           </Link>
         </div>
         <TopicCarousel />
-        <div className="category-grid">
-          {categories.map((category, index) => {
-            const Icon = categoryIcons[index] || BookOpen;
-            const count = questions.filter((q) => q.category === category.id).length;
-            return (
-              <Link
-                key={category.id}
-                href={`/questions?category=${category.id}`}
-                className={`category-tile category-tone-${index}`}
-              >
-                <span className="category-icon">
-                  <Icon size={22} strokeWidth={1.7} />
-                </span>
-                <strong>{category.name}</strong>
-                <span>
-                  {count}개 질문 <ArrowUpRight size={12} />
-                </span>
-              </Link>
-            );
-          })}
-        </div>
+
       </section>
       <div className="home-bottom-grid">
         <section className="recommended-section">

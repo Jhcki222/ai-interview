@@ -1,4 +1,6 @@
 "use client";
+import ThoughtLine from "@/components/ui/ThoughtLine";
+import { LoadingState } from "@/components/ui/loading-state";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
@@ -259,7 +261,9 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
         .filter(Boolean)
         .join("\n\n");
       if (jobPosting.length > MAX_JOB_POSTING_CHARS)
-        throw new Error(`채용공고 텍스트는 최대 ${MAX_JOB_POSTING_CHARS.toLocaleString()}자까지 사용할 수 있습니다.`);
+        throw new Error(
+          `채용공고 텍스트는 최대 ${MAX_JOB_POSTING_CHARS.toLocaleString()}자까지 사용할 수 있습니다.`,
+        );
       const analysisSettings = { ...settings, jobPosting };
       setSettings(analysisSettings);
       clearTimeout(timeout);
@@ -587,25 +591,18 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
       />
       {aiStatus && (
         <section className="interview-ai-status" role="status">
-          <strong>
-            {
-              {
-                initializing: "초기화",
-                connecting: "연결 중",
-                processing: "생성 중",
-                validating: "검증 중",
-                retrying: "재시도",
-                fallback: "대체 모델 연결",
-                completed: "완료",
-                timeout: "시간 초과",
-                ratelimit: "요청 한도",
-                missingconfig: "설정 필요",
-                failed: "처리 실패",
-                cancelled: "취소됨",
-              }[aiStatus.state]
-            }
-          </strong>
-          <span>{aiStatus.message}</span>
+          <ThoughtLine
+            interrupted={!busy && aiStatus.state !== "completed"}
+            working={busy}
+            label={aiStatus.message}
+            doneLabel={aiStatus.message}
+            steps={statusHistory
+              .map((item) => item.message)
+              .filter((message, index, all) => index === 0 || message !== all[index - 1])}
+            elapsed={busy ? elapsed : (aiStatus.elapsedMs || 0) / 1000}
+            color="var(--primary)"
+            collapseOnSettle={false}
+          />
           <small>
             {aiStatus.provider && `${aiStatus.provider} · ${aiStatus.model}`} ·{" "}
             {busy ? elapsed : Math.round((aiStatus.elapsedMs || 0) / 1000)}초
@@ -618,20 +615,6 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
           </small>
         </section>
       )}
-      {statusHistory.length > 1 && (
-        <details className="interview-ai-status">
-          <summary>연결·재시도 기록 ({statusHistory.length})</summary>
-          <ol>
-            {statusHistory.map((item, i) => (
-              <li key={i}>
-                {item.message} {item.provider && `${item.provider} / ${item.model}`}{" "}
-                {item.code && `· ${item.code}`}{" "}
-                {item.elapsedMs !== undefined && `· ${(item.elapsedMs / 1000).toFixed(1)}초`}
-              </li>
-            ))}
-          </ol>
-        </details>
-      )}{" "}
       {notice && (
         <div className="interview-notice" role="status">
           {notice} {!user && <Link href="/login?next=/interview">로그인</Link>}
@@ -656,8 +639,7 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
       )}
       {busy && (
         <div className="panel interview-loading" role="status">
-          <span className="interview-spinner" />
-          <p>{progress || "문서를 준비하고 있습니다."}</p>
+          {!aiStatus && <LoadingState compact label={progress || "문서를 준비하고 있습니다."} />}
           {preview && (
             <div className="interview-preview">
               <small className="muted">생성 중인 미리보기 · 검증 전</small>
@@ -868,7 +850,9 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
                   <li key={`${file.name}-${file.lastModified}`}>
                     <span>
                       <strong>{file.name}</strong>
-                      <small className="muted">{(file.size / 1024).toFixed(1)}KB · 텍스트 추출 대기</small>
+                      <small className="muted">
+                        {(file.size / 1024).toFixed(1)}KB · 텍스트 추출 대기
+                      </small>
                     </span>
                     <button
                       type="button"
@@ -876,7 +860,9 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
                       aria-label={`${file.name} 제거`}
                       disabled={busy}
                       onClick={() =>
-                        setJobPostingFiles((previous) => previous.filter((_, itemIndex) => itemIndex !== index))
+                        setJobPostingFiles((previous) =>
+                          previous.filter((_, itemIndex) => itemIndex !== index),
+                        )
                       }
                     >
                       제거
@@ -922,7 +908,8 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
           >
             <strong>이력서 · 자기소개서 · 포트폴리오</strong>
             <span className="muted">
-              여기로 파일을 끌어 놓거나 선택하세요 · PDF, DOCX, TXT, PNG, JPG, WEBP · 최대 3개 · 파일당 5MB
+              여기로 파일을 끌어 놓거나 선택하세요 · PDF, DOCX, TXT, PNG, JPG, WEBP · 최대 3개 ·
+              파일당 5MB
             </span>
             <input
               aria-label="면접 참고 문서 선택"
@@ -999,9 +986,7 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
                 rows={6}
                 maxLength={MAX_JOB_POSTING_CHARS}
                 value={settings.jobPosting}
-                onChange={(event) =>
-                  setSettings({ ...settings, jobPosting: event.target.value })
-                }
+                onChange={(event) => setSettings({ ...settings, jobPosting: event.target.value })}
               />
             </label>
           )}

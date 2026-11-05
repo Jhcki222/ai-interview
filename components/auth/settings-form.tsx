@@ -1,7 +1,9 @@
 "use client";
+import { LoadingState } from "@/components/ui/loading-state";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useAuth } from "./auth-provider";
+import { isSocialOnly } from "@/lib/auth/login-method";
 import { canExposeMemberData } from "@/lib/auth/session";
 
 export function SettingsForm() {
@@ -72,7 +74,7 @@ export function SettingsForm() {
       if (owner.current === requestOwner) setBusy(false);
     }
   }
-  if (loading) return <p role="status">계정을 확인하는 중…</p>;
+  if (loading) return <LoadingState compact label="계정을 확인하는 중…" />;
   if (!configured || !ownerId)
     return (
       <section className="panel empty-state">
@@ -83,12 +85,19 @@ export function SettingsForm() {
         </Link>
       </section>
     );
+  const socialProviders =
+    user?.providers?.filter((provider) => provider === "google" || provider === "github") ?? [];
+  const socialOnly = isSocialOnly(user?.providers);
   const feedback = message?.ownerId === ownerId ? message.message : "";
   if (!canExposeMemberData(ownerId, profile?.ownerId ?? null, loading))
     return (
       <section className="panel">
         <h1 className="page-heading">계정 설정</h1>
-        <p role="status">{feedback || "프로필을 불러오는 중…"}</p>
+        {feedback ? (
+          <p role="status">{feedback}</p>
+        ) : (
+          <LoadingState compact label="프로필을 불러오는 중…" />
+        )}
       </section>
     );
   return (
@@ -128,14 +137,20 @@ export function SettingsForm() {
         <hr style={{ margin: "24px 0" }} />
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
-            <p style={{ fontWeight: 600, fontSize: 14 }}>비밀번호 변경</p>
+            <p style={{ fontWeight: 600, fontSize: 14 }}>
+              {socialOnly ? "소셜 로그인" : "비밀번호 변경"}
+            </p>
             <p className="muted" style={{ fontSize: 13 }}>
-              숫자 4자리 비밀번호를 언제든지 변경할 수 있습니다.
+              {socialOnly
+                ? `${socialProviders.map((provider) => (provider === "google" ? "Google" : "GitHub")).join(" · ")} 계정으로 로그인하고 있습니다. 비밀번호와 인증 보안은 해당 서비스의 계정 설정에서 관리해 주세요.`
+                : "자체 가입 계정의 숫자 4자리 비밀번호를 변경합니다."}
             </p>
           </div>
-          <Link className="btn btn-secondary" href="/auth/update-password">
-            비밀번호 변경
-          </Link>
+          {!socialOnly && (
+            <Link className="btn btn-secondary" href="/auth/update-password">
+              비밀번호 변경
+            </Link>
+          )}
         </div>
         <hr style={{ margin: "24px 0" }} />
         <button

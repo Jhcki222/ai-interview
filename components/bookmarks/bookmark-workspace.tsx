@@ -1,4 +1,5 @@
 "use client";
+import { LoadingState } from "@/components/ui/loading-state";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
@@ -235,21 +236,15 @@ export function BookmarkWorkspace() {
       const result = await api("/api/me/questions", entry.question);
       setNotice(
         result.alreadySaved
-          ? "이미 내가 만든 질문에 보관한 질문이에요."
-          : "내가 만든 질문에 모범답안과 함께 보관했어요.",
+          ? "이미 회사 별 면접 관리에 보관한 질문이에요."
+          : "회사 별 면접 관리에 모범답안과 함께 보관했어요.",
       );
     } catch (e) {
       if (ownerRef.current === owner)
         setError(e instanceof Error ? e.message : "질문을 보관하지 못했어요.");
     }
   }
-  if (authLoading)
-    return (
-      <div className="bookmark-loading" role="status">
-        <Loader2 className="animate-spin" size={22} />
-        계정을 확인하고 있어요.
-      </div>
-    );
+  if (authLoading) return <LoadingState compact label="계정을 확인하고 있어요." />;
   if (!owner)
     return (
       <div className="empty-state">
@@ -338,7 +333,7 @@ export function BookmarkWorkspace() {
         {[
           { id: "", name: "전체 질문" },
           { id: "base", name: "기본 질문" },
-          { id: "created", name: "내가 만든 질문" },
+          { id: "created", name: "회사 별 면접 관리" },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -377,16 +372,13 @@ export function BookmarkWorkspace() {
         </div>
       )}
       {loading && !own ? (
-        <div className="bookmark-loading" role="status">
-          <Loader2 size={22} className="animate-spin" />
-          북마크를 불러오고 있어요.
-        </div>
+        <LoadingState compact label="북마크를 불러오고 있어요." />
       ) : own && filtered.length ? (
         <div className="bookmark-list">
           {filtered.slice((page - 1) * 10, page * 10).map((entry, index) => (
             <div className="bookmark-entry" key={entry.key}>
               <div className="bookmark-entry-source">
-                <span>{entry.source === "base" ? "기본 질문" : "내가 만든 질문"}</span>
+                <span>{entry.source === "base" ? "기본 질문" : "회사 별 면접 관리"}</span>
                 {entry.source === "created" && (
                   <Link href={`/my/questions?question=${entry.key.slice(6)}`}>
                     회사별 질문에서 관리 ↗

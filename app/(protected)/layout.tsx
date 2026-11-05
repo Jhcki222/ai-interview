@@ -18,25 +18,5 @@ export default async function Protected({ children }: { children: ReactNode }) {
         </Link>
       </section>
     );
-  return (
-    <>
-      <nav
-        aria-label="나의 학습"
-        style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 24 }}
-      >
-        {[
-          ["/my/questions", "내가 만든 질문"],
-          ["/my/answers", "내 답변"],
-          ["/my/bookmarks", "북마크"],
-          ["/my/progress", "학습 현황"],
-          ["/settings", "설정"],
-        ].map(([href, label]) => (
-          <Link key={href} className="btn btn-secondary" href={href}>
-            {label}
-          </Link>
-        ))}
-      </nav>
-      {children}
-    </>
-  );
+  return <>{children}</>;
 }

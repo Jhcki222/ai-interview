@@ -78,7 +78,7 @@ export function CompanyBoard({
             <FolderOpen size={14} /> MY QUESTION COLLECTIONS
           </span>
           <h2>기업마다, 더 가까운 준비.</h2>
-          <p>내가 만든 질문을 지원 기업별로 모아두세요.</p>
+          <p>회사 별 면접 관리을 지원 기업별로 모아두세요.</p>
         </div>
         <button className="btn btn-primary" onClick={() => create()}>
           <Plus size={16} />

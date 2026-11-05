@@ -4,7 +4,13 @@ import { createClient } from "@/lib/supabase/client";
 import { readInitialAuthUser } from "@/lib/auth/session";
 import { emailToUsername } from "@/lib/auth/forms";
 
-export type AuthUser = { id: string; email?: string; username?: string; nickname?: string };
+export type AuthUser = {
+  id: string;
+  email?: string;
+  username?: string;
+  nickname?: string;
+  providers?: string[];
+};
 type Auth = {
   user: AuthUser | null;
   configured: boolean;
@@ -30,7 +36,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let active = true;
     let authEventReceived = false;
     const update = (
-      u: { id: string; email?: string; user_metadata?: Record<string, unknown> } | null,
+      u: {
+        id: string;
+        email?: string;
+        user_metadata?: Record<string, unknown>;
+        app_metadata?: Record<string, unknown>;
+      } | null,
     ) => {
       if (!active) return;
       setUser(
@@ -38,6 +49,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           ? {
               id: u.id,
               email: u.email,
+              providers: Array.isArray(u.app_metadata?.providers)
+                ? u.app_metadata.providers.filter((p): p is string => typeof p === "string")
+                : typeof u.app_metadata?.provider === "string"
+                  ? [u.app_metadata.provider]
+                  : [],
               username:
                 typeof u.user_metadata?.username === "string"
                   ? u.user_metadata.username

@@ -62,3 +62,18 @@ export function updateCompactQuestion(
     // Preserve existing hidden metadata and its original source marker.
   };
 }
+
+/** Preserve the database snapshot shape while hiding unfilled compatibility entries. */
+export function withCompactFollowups(
+  question: Question,
+  followUps: Question["followUps"],
+): Question {
+  const items = [...followUps];
+  while (items.length < 2)
+    items.push({
+      id: `unwritten-follow-up-${items.length + 1}`,
+      question: "(꼬리질문 미작성)",
+      modelAnswer: "(꼬리질문 답변 미작성)",
+    });
+  return { ...question, followUps: items };
+}

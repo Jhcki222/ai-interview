@@ -4,7 +4,12 @@ import { categories } from "@/lib/questions";
 import { savedQuestionSchema } from "@/lib/auth/validation";
 import type { SavedQuestionRecord } from "@/lib/auth/member-learning";
 import type { CategoryId, Question } from "@/types/question";
-import { isCompactManualQuestion, updateCompactQuestion } from "./compact-question";
+import { FollowupFields, readFollowups } from "./followup-fields";
+import {
+  isCompactManualQuestion,
+  updateCompactQuestion,
+  withCompactFollowups,
+} from "./compact-question";
 import type { CompanyCollection } from "@/types/company";
 
 export function SavedQuestionEditor({
@@ -81,7 +86,7 @@ export function SavedQuestionEditor({
   }
   return (
     <form onSubmit={submit} className="saved-question-editor" style={{ display: "grid", gap: 16 }}>
-      <h2>내가 만든 질문 편집</h2>
+      <h2>회사 별 면접 관리 편집</h2>
       <label>
         기업 폴더
         <select className="select" name="company_id" defaultValue={record.company_id ?? ""}>
@@ -288,7 +293,10 @@ function CompactSavedQuestionEditor({
       return;
     }
     const parsed = savedQuestionSchema.safeParse(
-      updateCompactQuestion(record.question, category as CategoryId, question, answer),
+      withCompactFollowups(
+        updateCompactQuestion(record.question, category as CategoryId, question, answer),
+        readFollowups(data),
+      ),
     );
     if (!parsed.success) {
       setError("질문은 5,000자, 답변은 10,000자 이내로 입력해 주세요.");
@@ -303,11 +311,7 @@ function CompactSavedQuestionEditor({
   }
 
   return (
-    <form
-      onSubmit={submit}
-      className="saved-question-editor"
-      style={{ display: "grid", gap: 16 }}
-    >
+    <form onSubmit={submit} className="saved-question-editor" style={{ display: "grid", gap: 16 }}>
       <h2>내 질문 수정하기</h2>
       <div className="member-form-grid">
         <label>
@@ -321,7 +325,8 @@ function CompactSavedQuestionEditor({
             <option value="">미분류</option>
             {companies.map((company) => (
               <option key={company.id} value={company.id}>
-                {company.name}{company.position ? ` · ${company.position}` : ""}
+                {company.name}
+                {company.position ? ` · ${company.position}` : ""}
               </option>
             ))}
           </select>
@@ -336,7 +341,9 @@ function CompactSavedQuestionEditor({
             required
           >
             {categories.map((item) => (
-              <option value={item.id} key={item.id}>{item.name}</option>
+              <option value={item.id} key={item.id}>
+                {item.name}
+              </option>
             ))}
           </select>
         </label>
@@ -365,15 +372,17 @@ function CompactSavedQuestionEditor({
           disabled={busy}
         />
       </label>
-      {error && <p className="company-error" role="alert">{error}</p>}
+      <FollowupFields initial={record.question.followUps} disabled={busy} />
+      {error && (
+        <p className="company-error" role="alert">
+          {error}
+        </p>
+      )}
       <div style={{ display: "flex", gap: 8 }}>
-        <button className="btn btn-primary" disabled={busy}>변경 저장</button>
-        <button
-          type="button"
-          className="btn btn-secondary"
-          disabled={busy}
-          onClick={onCancel}
-        >
+        <button className="btn btn-primary" disabled={busy}>
+          변경 저장
+        </button>
+        <button type="button" className="btn btn-secondary" disabled={busy} onClick={onCancel}>
           취소
         </button>
       </div>

@@ -4,7 +4,8 @@ import { useState, type FormEvent } from "react";
 import { categories } from "@/lib/questions";
 import type { CategoryId } from "@/types/question";
 import type { CompanyCollection } from "@/types/company";
-import { createCompactQuestion } from "./compact-question";
+import { FollowupFields, readFollowups } from "./followup-fields";
+import { createCompactQuestion, withCompactFollowups } from "./compact-question";
 
 export function CreateQuestionForm({
   onCreated,
@@ -51,7 +52,10 @@ export function CreateQuestionForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           company_id: value("company_id") || null,
-          question: createCompactQuestion(category as CategoryId, question, answer),
+          question: withCompactFollowups(
+            createCompactQuestion(category as CategoryId, question, answer),
+            readFollowups(data),
+          ),
         }),
       });
       const result = await response.json();
@@ -104,7 +108,8 @@ export function CreateQuestionForm({
                 <option value="">미분류</option>
                 {companies.map((company) => (
                   <option key={company.id} value={company.id}>
-                    {company.name}{company.position ? ` · ${company.position}` : ""}
+                    {company.name}
+                    {company.position ? ` · ${company.position}` : ""}
                   </option>
                 ))}
               </select>
@@ -113,7 +118,9 @@ export function CreateQuestionForm({
               카테고리
               <select name="category" className="select" disabled={busy} required>
                 {categories.map((item) => (
-                  <option value={item.id} key={item.id}>{item.name}</option>
+                  <option value={item.id} key={item.id}>
+                    {item.name}
+                  </option>
                 ))}
               </select>
             </label>
@@ -142,7 +149,12 @@ export function CreateQuestionForm({
               disabled={busy}
             />
           </label>
-          {error && <p role="alert" className="company-error">{error}</p>}
+          <FollowupFields disabled={busy} />
+          {error && (
+            <p role="alert" className="company-error">
+              {error}
+            </p>
+          )}
           <button className="btn btn-primary" disabled={busy}>
             {busy ? "저장 중…" : "질문 저장"}
           </button>

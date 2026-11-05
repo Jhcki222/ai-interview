@@ -38,7 +38,7 @@ export function buildMemberDashboard(
     ...saved.map((row) => [`saved:${row.id}`, row.question] as const),
   ]);
   const categories = Object.fromEntries(
-    (["CS", "BACKEND", "AI", "PERSONALITY", "MOTIVATION", "BUSINESS", "PROJECTS"] as const).map(
+    (["CS", "FRONTEND", "BACKEND", "AI", "PERSONALITY", "MOTIVATION", "BUSINESS", "PROJECTS"] as const).map(
       (category) => [category, { total: 0, answered: 0, completed: 0 }],
     ),
   ) as Record<CategoryId, { total: number; answered: number; completed: number }>;

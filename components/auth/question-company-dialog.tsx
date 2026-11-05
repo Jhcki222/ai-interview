@@ -1,4 +1,5 @@
 "use client";
+import { LoadingState } from "@/components/ui/loading-state";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Building2, FolderOpen } from "lucide-react";
@@ -120,7 +121,7 @@ export function QuestionCompanyDialog({
       onSaved?.(
         result.alreadySaved
           ? "이미 저장한 질문입니다. 기존 기업 폴더와 답안은 유지됩니다."
-          : "내가 만든 질문에 저장했습니다.",
+          : "회사 별 면접 관리에 저장했습니다.",
       );
       onClose();
     } catch (e) {
@@ -146,7 +147,7 @@ export function QuestionCompanyDialog({
             기업 폴더에 질문 저장
           </DialogTitle>
           <DialogDescription>
-            지원하는 기업을 선택하면 내가 만든 질문에서 함께 준비할 수 있어요.
+            지원하는 기업을 선택하면 회사 별 면접 관리에서 함께 준비할 수 있어요.
           </DialogDescription>
         </DialogHeader>
         {!owner ? (
@@ -161,7 +162,7 @@ export function QuestionCompanyDialog({
             <div className="company-save-dialog-body">
               <p className="company-save-question">{question?.question}</p>
               {loading ? (
-                <p role="status">기업 폴더를 불러오는 중…</p>
+                <LoadingState compact label="기업 폴더를 불러오는 중…" />
               ) : (
                 <label className="company-picker-label">
                   저장할 기업
@@ -187,7 +188,7 @@ export function QuestionCompanyDialog({
               >
                 <Building2 size={14} />새 기업은{" "}
                 <Link href="/my/questions" target="_blank" rel="noopener noreferrer">
-                  내가 만든 질문
+                  회사 별 면접 관리
                 </Link>
                 에서 추가할 수 있어요.
               </p>
