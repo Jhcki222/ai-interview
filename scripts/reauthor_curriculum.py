@@ -26,7 +26,7 @@ def josa(word: str, pair: str = "을/를") -> str:
     return f"{word}{first if has_batchim else second}"
 
 def convert_word(w: str) -> str:
-    if w.endswith(('습니다', '입니다', '옵니다', '십니까', '입니까', '습니까', '시지요', '세요', '인가요', '나요', '지요')):
+    if w.endswith(('니다', '십니까', '입니까', '습니까', '시지요', '세요', '인가요', '나요', '지요')):
         return w
     
     specific = {
@@ -182,9 +182,7 @@ def to_interview_tone(text: str) -> str:
             
         out_lines.append(''.join(rebuilt))
         
-    res = '\n'.join(out_lines)
-    res = res.replace(' 이 판단의 근거는 다음과 같습니다. ', ' 이러한 판단을 내린 이유는 ')
-    return res
+    return '\n'.join(out_lines)
 
 def run():
     source_path = ROOT / 'scripts' / 'author-content.py'
@@ -291,12 +289,8 @@ vLLM과 PagedAttention|PagedAttention은 OS의 가상 메모리 페이징 기법
                         eval_intent = "- 기술을 비즈니스 가치 창출의 도구로 바라보는 제품 중심 엔지니어링 사고\n- 일정, 비용, 품질 간의 현실적인 트레이드오프 조율 역량\n- 비개발 직군(기획/경영진)과의 객관적 데이터 기반 커뮤니케이션 능력"
                         anti_pattern = "- 비즈니스 목표와 무관하게 기술적 완벽주의만을 고집하는 태도\n- 고객의 실제 문제 확인 없이 개인적 추측만으로 솔루션을 단정하는 답변\n- 장기적 유지보수 비용(TCO)을 간과하고 단기 땜질식 구현을 정당화하는 태도"
 
-                    summary = f"이 질문은 정답이 정해져 있지 않은 열린 질문이므로, {framework_desc}의 4단계 프레임워크로 구조화하여 답변하시는 것을 권장합니다."
-                    
-                    if mode == 0:
-                        interview_answer = f"저는 {josa(topic, '과/와')} 관련하여 다음과 같은 가치관과 기준을 바탕으로 임하고 있습니다. {p_polite} 실제 경험을 예로 들면, {fa1_polite} 이를 바탕으로 {fa2_polite}"
-                    else:
-                        interview_answer = f"{s_polite} 이러한 결정을 내리는 근거는 {p_polite} 실무에서는 {fa2_polite}"
+                    summary = p_polite if mode == 0 else s_polite
+                    interview_answer = summary
                     
                     detailed_explanation = (
                         f"{framework_title}\n"
@@ -322,12 +316,8 @@ vLLM과 PagedAttention|PagedAttention은 OS의 가상 메모리 페이징 기법
 
                 else:
                     # CS, BACKEND, AI: Technical deep-dive verbal answers
-                    if mode == 0:
-                        summary = p_polite
-                        interview_answer = f"{p_polite} 실무 적용 시에는 {fa1_polite} 나아가 {fa2_polite}"
-                    else:
-                        summary = f"{s_polite} 이는 {p_polite}"
-                        interview_answer = f"{s_polite} 이러한 결정을 내리는 근거는 {p_polite} 실무 환경에서는 {fa1_polite}"
+                    summary = p_polite if mode == 0 else s_polite
+                    interview_answer = summary
 
                     detailed_explanation = (
                         f"[핵심 개념 및 동작 원리]\n{p_polite}\n\n"

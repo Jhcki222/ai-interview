@@ -11,6 +11,19 @@ const required = {
   PROJECTS: 32,
 };
 const errors = validateQuestions(questions);
+const repeatedEnding = /(?:니입니다|니다입니다|습니다습니다)/u;
+for (const { id, modelAnswer, followUps } of questions) {
+  const answers = [
+    modelAnswer.summary,
+    modelAnswer.interviewAnswer,
+    modelAnswer.detailedExplanation,
+    modelAnswer.example,
+    ...followUps.map((followUp) => followUp.modelAnswer),
+  ];
+  if (answers.some((answer) => repeatedEnding.test(answer))) {
+    errors.push(`${id}: repeated Korean sentence ending`);
+  }
+}
 for (const c of categories) {
   const count = questions.filter((q) => q.category === c.id).length;
   if (count < required[c.id])
