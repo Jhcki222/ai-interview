@@ -15,12 +15,13 @@ import {
   Loader2,
 } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
+import { QuestionCompanyDialog } from "@/components/auth/question-company-dialog";
 import { Button } from "@/components/ui/button";
 import { QuestionCard, statusLabels } from "@/components/questions/question-card";
 import { questions, categories } from "@/lib/questions";
 import { resolveBookmarks, filterBookmarks, type BookmarkEntry } from "@/lib/learning/bookmarks";
 import type { SavedQuestionRecord, MemberLearningState } from "@/lib/auth/member-learning";
-import type { Progress } from "@/types/question";
+import type { Progress, Question } from "@/types/question";
 import "@/components/questions/questions.css";
 import "./bookmarks.css";
 type Loaded = { owner: string; saved: SavedQuestionRecord[]; learning: MemberLearningState };
@@ -36,6 +37,7 @@ export function BookmarkWorkspace() {
   const [reload, setReload] = useState(0);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [questionToSave, setQuestionToSave] = useState<Question | null>(null);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("");
   const [status, setStatus] = useState("");
@@ -49,6 +51,7 @@ export function BookmarkWorkspace() {
   useEffect(() => {
     setError("");
     setNotice("");
+    setQuestionToSave(null);
     setUndo(null);
     setDrafts({});
     setPending(new Set());
@@ -232,20 +235,6 @@ export function BookmarkWorkspace() {
       if (ownerRef.current === requestOwner) setPending(new Set(locks.current));
     }
   }
-  async function saveSnapshot(entry: BookmarkEntry) {
-    setUndo(null);
-    try {
-      const result = await api("/api/me/questions", entry.question);
-      setNotice(
-        result.alreadySaved
-          ? "이미 회사 별 면접 관리에 보관한 질문이에요."
-          : "회사 별 면접 관리에 모범답안과 함께 보관했어요.",
-      );
-    } catch (e) {
-      if (ownerRef.current === owner)
-        setError(e instanceof Error ? e.message : "질문을 보관하지 못했어요.");
-    }
-  }
   if (authLoading) return <LoadingState compact label="계정을 확인하고 있어요." />;
   if (!owner)
     return (
@@ -400,7 +389,9 @@ export function BookmarkWorkspace() {
                 onDelete={() => void answerAction(entry, true)}
                 onProgress={(patch) => void changeProgress(entry, patch)}
                 onBookmark={() => void changeProgress(entry, { bookmarked: false })}
-                onSaveQuestion={() => void saveSnapshot(entry)}
+                onSaveQuestion={
+                  entry.source === "base" ? () => setQuestionToSave(entry.question) : undefined
+                }
               />
             </div>
           ))}
@@ -466,6 +457,11 @@ export function BookmarkWorkspace() {
           </Button>
         </nav>
       )}
+      <QuestionCompanyDialog
+        question={questionToSave}
+        onClose={() => setQuestionToSave(null)}
+        onSaved={setNotice}
+      />
     </section>
   );
 }

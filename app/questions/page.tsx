@@ -5,7 +5,7 @@ export const metadata: Metadata = { title: "질문 학습" };
 export default async function QuestionsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ category?: string; q?: string }>;
+  searchParams: Promise<{ category?: string; q?: string; company?: string }>;
 }) {
   const params = await searchParams;
   return (
@@ -13,6 +13,7 @@ export default async function QuestionsPage({
       questions={questions}
       initialCategory={typeof params.category === "string" ? params.category : ""}
       initialQuery={typeof params.q === "string" ? params.q : ""}
+      suggestedCompanyId={typeof params.company === "string" ? params.company : undefined}
     />
   );
 }

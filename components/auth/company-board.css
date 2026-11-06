@@ -355,6 +355,11 @@
   letter-spacing: -0.4px;
   margin: 0;
 }
+.company-question-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
 .company-question-heading p {
   font-size: 11px;
   color: var(--muted-foreground, #7a8396);

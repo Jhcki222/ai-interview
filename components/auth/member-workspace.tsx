@@ -301,9 +301,16 @@ export function MemberWorkspace({
               {companyFilter === "UNASSIGNED" ? " · 기존 질문은 여기에 보관됩니다." : ""}
             </p>
           </div>
-          <button className="btn btn-secondary" onClick={() => selectCompany("BOARD")}>
-            기업 보드로
-          </button>
+          <div className="company-question-actions">
+            {selectedCompany && (
+              <Link className="btn btn-secondary" href={`/questions?company=${selectedCompany.id}`}>
+                질문 학습에서 추가
+              </Link>
+            )}
+            <button className="btn btn-secondary" onClick={() => selectCompany("BOARD")}>
+              기업 보드로
+            </button>
+          </div>
         </div>
       )}
       {showQuestionDetail && (

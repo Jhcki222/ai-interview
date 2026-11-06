@@ -18,6 +18,7 @@ import {
   Moon,
   Search,
   Settings2,
+  Shuffle,
   Sun,
   Target,
   X,
@@ -28,6 +29,7 @@ import { cn } from "@/lib/utils";
 const mainLinks = [
   { href: "/", label: "대시보드", icon: LayoutDashboard },
   { href: "/questions", label: "질문 학습", icon: BookOpen },
+  { href: "/practice", label: "랜덤 질문 연습", icon: Shuffle },
   { href: "/interview", label: "AI 모의면접", icon: AudioLines, badge: "Beta" },
 ];
 const personalLinks = [

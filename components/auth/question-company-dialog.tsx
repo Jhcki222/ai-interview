@@ -22,11 +22,13 @@ export function QuestionCompanyDialog({
   onClose,
   onSaved,
   suggestedCompanyName = "",
+  suggestedCompanyId,
 }: {
   question: Question | null;
   onClose: () => void;
   onSaved?: (message: string) => void;
   suggestedCompanyName?: string;
+  suggestedCompanyId?: string;
 }) {
   const { user, loading: authLoading } = useAuth();
   const owner = user?.id ?? null;
@@ -34,6 +36,7 @@ export function QuestionCompanyDialog({
   currentOwner.current = owner;
   const [data, setData] = useState<{ owner: string; companies: CompanyCollection[] } | null>(null);
   const [selected, setSelected] = useState("");
+  const [existing, setExisting] = useState<{ id: string; companyId: string | null } | null>(null);
   const [pendingRequest, setPending] = useState<CompanyDialogRequest | null>(null);
   const requestVersion = useRef(0);
   const currentQuestion = useRef(question?.id ?? null);
@@ -53,6 +56,7 @@ export function QuestionCompanyDialog({
     setPending(null);
     setData(null);
     setSelected("");
+    setExisting(null);
     setError("");
     setLoading(false);
     if (!question || !owner || authLoading) return;
@@ -69,10 +73,11 @@ export function QuestionCompanyDialog({
           return;
         if (!response.ok) throw new Error(result.error);
         setData({ owner: requestOwner, companies: result.companies });
-        const suggested = result.companies.find(
-          (company: CompanyCollection) =>
-            company.name.trim().toLocaleLowerCase("ko") ===
-            suggestedCompanyName.trim().toLocaleLowerCase("ko"),
+        const suggested = result.companies.find((company: CompanyCollection) =>
+          suggestedCompanyId
+            ? company.id === suggestedCompanyId
+            : company.name.trim().toLocaleLowerCase("ko") ===
+              suggestedCompanyName.trim().toLocaleLowerCase("ko"),
         );
         setSelected(suggested?.id ?? "");
       })
@@ -89,7 +94,7 @@ export function QuestionCompanyDialog({
       controller.abort();
       saveController.current?.abort();
     };
-  }, [question, owner, authLoading, suggestedCompanyName]);
+  }, [question, owner, authLoading, suggestedCompanyName, suggestedCompanyId]);
   async function save() {
     if (!question || !owner || data?.owner !== owner) return;
     const requestOwner = owner;
@@ -109,19 +114,29 @@ export function QuestionCompanyDialog({
     setPending(request);
     setError("");
     try {
-      const response = await fetch("/api/me/questions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question, company_id: selected || null }),
-        signal: controller.signal,
-      });
+      const folder = { company_id: selected || null };
+      const response = await fetch(
+        existing ? `/api/me/questions/${existing.id}` : "/api/me/questions",
+        {
+          method: existing ? "PATCH" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(existing ? folder : { question, ...folder }),
+          signal: controller.signal,
+        },
+      );
       const result = await response.json();
       if (!isCurrent()) return;
       if (!response.ok) throw new Error(result.error);
+      if (result.alreadySaved && selected && result.question.company_id !== selected) {
+        setExisting({ id: result.question.id, companyId: result.question.company_id });
+        return;
+      }
       onSaved?.(
-        result.alreadySaved
-          ? "이미 저장한 질문입니다. 기존 기업 폴더와 답안은 유지됩니다."
-          : "회사 별 면접 관리에 저장했습니다.",
+        existing
+          ? "선택한 기업 폴더로 질문을 이동했습니다."
+          : result.alreadySaved
+            ? "이미 회사 별 면접 관리에 저장된 질문입니다."
+            : "회사 별 면접 관리에 저장했습니다.",
       );
       onClose();
     } catch (e) {
@@ -169,7 +184,10 @@ export function QuestionCompanyDialog({
                   <select
                     className="select"
                     value={selected}
-                    onChange={(event) => setSelected(event.target.value)}
+                    onChange={(event) => {
+                      setSelected(event.target.value);
+                      setError("");
+                    }}
                     disabled={pending || data?.owner !== owner}
                   >
                     <option value="">미분류</option>
@@ -181,6 +199,14 @@ export function QuestionCompanyDialog({
                     ))}
                   </select>
                 </label>
+              )}
+              {existing && (
+                <p role="status">
+                  현재 폴더는{" "}
+                  {data?.companies.find((company) => company.id === existing.companyId)?.name ??
+                    "미분류"}
+                  입니다. 질문을 이동하면 작성한 답변과 메모도 함께 옮겨집니다.
+                </p>
               )}
               <p
                 className="muted"
@@ -204,10 +230,15 @@ export function QuestionCompanyDialog({
               </button>
               <button
                 className="btn btn-primary"
-                disabled={pending || loading || !!error || data?.owner !== owner}
+                disabled={
+                  pending ||
+                  loading ||
+                  data?.owner !== owner ||
+                  (!!existing && existing.companyId === (selected || null))
+                }
                 onClick={() => void save()}
               >
-                {pending ? "저장 중…" : "질문 저장"}
+                {pending ? "저장 중…" : existing ? "선택한 폴더로 이동" : "질문 저장"}
               </button>
             </DialogFooter>
           </>

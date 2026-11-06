@@ -41,7 +41,7 @@ interface Props {
   onDelete: () => void;
   onProgress: (patch: Partial<Progress>) => void;
   onBookmark: () => void;
-  onSaveQuestion: () => void;
+  onSaveQuestion?: () => void;
 }
 export const QuestionCard = memo(function QuestionCard({
   question: q,
@@ -140,6 +140,11 @@ export const QuestionCard = memo(function QuestionCard({
           <HugeiconsIcon icon={Edit02Icon} size={14} /> 내 답변{" "}
           {answer && <span className="draft-dot" />}
         </button>
+        {onSaveQuestion && (
+          <button className="question-action" onClick={onSaveQuestion} disabled={busy}>
+            <HugeiconsIcon icon={FolderAddIcon} size={14} /> 기업 폴더에 저장
+          </button>
+        )}
         <div className="question-actions-right">
           <label className="sr-only" htmlFor={`${elementId}-status`}>
             학습 상태
@@ -196,9 +201,6 @@ export const QuestionCard = memo(function QuestionCard({
             </section>
             <div className="answer-end">
               <span>{q.modelAnswer.keywords.map((k) => `#${k}`).join("  ")}</span>
-              <Button variant="ghost" size="sm" onClick={onSaveQuestion} disabled={busy}>
-                <HugeiconsIcon icon={FolderAddIcon} size={14} />내 질문에 저장
-              </Button>
             </div>
           </motion.div>
         )}

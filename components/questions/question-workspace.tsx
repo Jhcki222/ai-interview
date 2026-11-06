@@ -9,6 +9,7 @@ import {
   ListFilter,
   SearchX,
   ShieldCheck,
+  Shuffle,
   X,
 } from "lucide-react";
 import { motion } from "motion/react";
@@ -36,12 +37,16 @@ interface Props {
   initialCategory?: string;
   initialQuery?: string;
   detail?: Question;
+  practice?: boolean;
+  suggestedCompanyId?: string;
 }
 export function QuestionWorkspace({
   questions,
   initialCategory = "",
   initialQuery = "",
   detail,
+  practice = false,
+  suggestedCompanyId,
 }: Props) {
   const { user } = useAuth();
   const learning = useLearning();
@@ -53,6 +58,7 @@ export function QuestionWorkspace({
   const [status, setStatus] = useState("");
   const [onlyBookmarks, setOnlyBookmarks] = useState(false);
   const [page, setPage] = useState(1);
+  const [practiceQuestion, setPracticeQuestion] = useState<Question | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
   const [questionToSave, setQuestionToSave] = useState<Question | null>(null);
   const [saveNotice, setSaveNotice] = useState("");
@@ -88,7 +94,17 @@ export function QuestionWorkspace({
   useEffect(() => {
     setPage((current) => Math.min(current, pages));
   }, [pages]);
-  const visible = detail ? [detail] : filtered.slice((page - 1) * pageSize, page * pageSize);
+  const browse = !detail && !practice;
+  const currentQuestion = detail ?? practiceQuestion;
+  const visible = browse
+    ? filtered.slice((page - 1) * pageSize, page * pageSize)
+    : currentQuestion
+      ? [currentQuestion]
+      : [];
+  const practicePool = useMemo(
+    () => (practice ? filterQuestions(questions, { category }) : []),
+    [practice, questions, category],
+  );
   const selectedCategory = categories.find((c) => c.id === category);
   const subcategories = [
     ...new Set(
@@ -102,13 +118,27 @@ export function QuestionWorkspace({
     setPage(1);
   }, [category, subcategory, query, difficulty, importance, status, onlyBookmarks]);
   useEffect(() => {
-    if (detail) return;
+    if (!browse) return;
     const params = new URLSearchParams();
     if (category) params.set("category", category);
     if (query) params.set("q", query);
+    if (suggestedCompanyId) params.set("company", suggestedCompanyId);
     const url = params.size ? `/questions?${params}` : "/questions";
     window.history.replaceState(null, "", url);
-  }, [category, query, detail]);
+  }, [category, query, browse, suggestedCompanyId]);
+  function drawQuestion() {
+    const candidates = practicePool.filter((question) => question.id !== practiceQuestion?.id);
+    if (!candidates.length) return;
+    setPracticeQuestion(candidates[Math.floor(Math.random() * candidates.length)]);
+    setSaveNotice("");
+  }
+  const companyParam = suggestedCompanyId
+    ? `company=${encodeURIComponent(suggestedCompanyId)}`
+    : "";
+  const questionsPath = detail ? `/questions/${detail.id}` : "/questions";
+  const returnPath = practice
+    ? "/practice"
+    : `${questionsPath}${companyParam ? `?${companyParam}` : ""}`;
   function chooseCategory(value: string) {
     setCategory(value);
     setSubcategory("");
@@ -129,9 +159,15 @@ export function QuestionWorkspace({
       </div>
       <div className="questions-page-title">
         <div>
-          <h1 className="page-heading">{detail ? "질문 상세" : "면접 질문"}</h1>
+          <h1 className="page-heading">
+            {practice ? "랜덤 질문 연습" : detail ? "질문 상세" : "면접 질문"}
+          </h1>
           <p className="muted">
-            {detail ? "질문과 답변을 확인하세요." : "분야별 질문을 확인하고 답변을 연습하세요."}
+            {practice
+              ? "카테고리를 선택하고 무작위로 뽑은 질문에 답해 보세요."
+              : detail
+                ? "질문과 답변을 확인하세요."
+                : "분야별 질문을 확인하고 답변을 연습하세요."}
           </p>
         </div>
         <span className="question-total">
@@ -139,13 +175,16 @@ export function QuestionWorkspace({
         </span>
       </div>
       {detail ? (
-        <Link className="back-to-questions" href={`/questions?category=${detail.category}`}>
+        <Link
+          className="back-to-questions"
+          href={`/questions?category=${detail.category}${companyParam ? `&${companyParam}` : ""}`}
+        >
           <ArrowLeft size={14} />
           질문 목록으로 돌아가기
         </Link>
       ) : null}
-      <div className={cn(detail ? "question-detail-layout" : "question-layout")}>
-        {!detail && (
+      <div className={browse ? "question-layout" : "question-detail-layout"}>
+        {browse && (
           <aside className={cn("question-categories", categoryOpen && "category-open")}>
             <button
               className="category-mobile-toggle"
@@ -221,7 +260,41 @@ export function QuestionWorkspace({
           </aside>
         )}
         <div className="questions-main">
-          {!detail && (
+          {practice && (
+            <div className="question-filterbar">
+              <div className="filter-selects">
+                <label htmlFor="practice-category">카테고리</label>
+                <select
+                  id="practice-category"
+                  className="filter-select"
+                  value={category}
+                  onChange={(event) => {
+                    setCategory(event.target.value);
+                    setPracticeQuestion(null);
+                    setSaveNotice("");
+                  }}
+                >
+                  <option value="">전체 카테고리</option>
+                  {categories.map(({ id, name }) => (
+                    <option key={id} value={id}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+                <Button
+                  onClick={drawQuestion}
+                  disabled={practicePool.length <= (practiceQuestion ? 1 : 0)}
+                >
+                  <Shuffle size={16} />
+                  {practiceQuestion ? "다음 랜덤 질문" : "랜덤 질문 뽑기"}
+                </Button>
+              </div>
+              <span className="filter-result">
+                총 <strong>{practicePool.length}</strong>개 질문
+              </span>
+            </div>
+          )}
+          {browse && (
             <>
               <div className="question-searchbar">
                 <HugeiconsIcon icon={Search01Icon} size={18} />
@@ -383,7 +456,8 @@ export function QuestionWorkspace({
                     answer={learning.answers[key] ?? ""}
                     progress={learning.progress[key]}
                     busy={busy}
-                    detail={!!detail}
+                    detail={!browse}
+                    titleHref={companyParam ? `/questions/${q.id}?${companyParam}` : undefined}
                     onEdit={(value) => learning.editAnswer(key, value)}
                     onSave={() => {
                       if (!user) {
@@ -415,7 +489,14 @@ export function QuestionWorkspace({
               );
             })}
           </div>
-          {!visible.length && (
+          {practice && !practiceQuestion && (
+            <p className="muted" role="status">
+              {practicePool.length
+                ? "질문을 뽑으면 여기에 표시됩니다."
+                : "이 카테고리에 질문이 없어요."}
+            </p>
+          )}
+          {browse && !visible.length && (
             <div className="empty-state">
               <SearchX size={34} />
               <h2>일치하는 질문이 없어요.</h2>
@@ -425,7 +506,7 @@ export function QuestionWorkspace({
               </Button>
             </div>
           )}
-          {!detail && pages > 1 && (
+          {browse && pages > 1 && (
             <nav className="pagination" aria-label="질문 페이지">
               <Button
                 variant="outline"
@@ -473,6 +554,7 @@ export function QuestionWorkspace({
         question={questionToSave}
         onClose={() => setQuestionToSave(null)}
         onSaved={setSaveNotice}
+        suggestedCompanyId={suggestedCompanyId}
       />
       <Dialog open={authOpen} onOpenChange={setAuthOpen}>
         <DialogContent>
@@ -504,14 +586,14 @@ export function QuestionWorkspace({
             </Button>
             <Button variant="outline" asChild>
               <Link
-                href={`/signup?next=${encodeURIComponent(detail ? `/questions/${detail.id}` : "/questions")}`}
+                href={`/signup?next=${encodeURIComponent(returnPath)}`}
               >
                 회원가입
               </Link>
             </Button>
             <Button asChild>
               <Link
-                href={`/login?next=${encodeURIComponent(detail ? `/questions/${detail.id}` : "/questions")}`}
+                href={`/login?next=${encodeURIComponent(returnPath)}`}
               >
                 로그인 <ArrowRight size={14} />
               </Link>

@@ -11,9 +11,21 @@ export async function generateMetadata({
   const question = getQuestion(id);
   return { title: question?.question ?? "질문을 찾을 수 없어요" };
 }
-export default async function QuestionPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+export default async function QuestionPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ company?: string }>;
+}) {
+  const [{ id }, { company }] = await Promise.all([params, searchParams]);
   const question = getQuestion(id);
   if (!question) notFound();
-  return <QuestionWorkspace questions={questions} detail={question} />;
+  return (
+    <QuestionWorkspace
+      questions={questions}
+      detail={question}
+      suggestedCompanyId={typeof company === "string" ? company : undefined}
+    />
+  );
 }
