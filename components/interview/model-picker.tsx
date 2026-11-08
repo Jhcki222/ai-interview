@@ -155,7 +155,7 @@ export function ModelPicker({
           </label>
           <p className="muted">
             모델 목록은 지원 후보 목록이며 실시간 응답 성공을 보장하지 않습니다.
-            NVIDIA·Ollama·Groq는 완료 후 전체 응답을 검증합니다.
+            생성 중에는 진행 상태를 표시하고, 전체 응답을 검증한 뒤 결과를 반영합니다.
           </p>
         </>
       )}

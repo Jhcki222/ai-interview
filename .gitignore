@@ -7,3 +7,6 @@ coverage/
 .superpowers/
 test-results/
 .tmp/
+__pycache__/
+.pytest_cache/
+.venv/

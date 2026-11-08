@@ -10,13 +10,8 @@ const status = {
   supabaseServerKey: !!privateKey,
   guestSigningSecret: !!cookieSecret && cookieSecret.length >= 32,
   aiProvider: process.env.AI_PROVIDER || "groq",
-  aiKey: !!(process.env.AI_PROVIDER === "nvidia"
-    ? process.env.NVIDIA_API_KEY
-    : process.env.AI_PROVIDER === "ollama"
-      ? process.env.OLLAMA_API_KEY
-      : process.env.AI_PROVIDER === "openai"
-        ? process.env.OPENAI_API_KEY
-        : process.env.GROQ_API_KEY),
+  harnessUrl: !!process.env.AI_HARNESS_URL,
+  harnessToken: (process.env.AI_HARNESS_TOKEN?.length ?? 0) >= 32,
   aiModel: !!process.env.AI_MODEL,
 };
 console.log(JSON.stringify(status, null, 2));

@@ -1,3 +1,5 @@
+import verifiedModels from "../../python_harness/models.json";
+
 export type ProviderId = "nvidia" | "groq" | "ollama" | "openai";
 export type Selection = { provider: ProviderId; model: string };
 export type ProviderCatalog = {
@@ -20,12 +22,7 @@ export const ALLOWED_MODELS: Record<ProviderId, string[]> = {
   openai: ["gpt-4.1-mini", "gpt-4.1", "gpt-5-mini"],
 };
 // Real synthetic Korean JSON probes on 2026-11-04. Discovery alone is not a health check.
-export const VERIFIED_MODELS: Record<ProviderId, string[]> = {
-  nvidia: ["nvidia/nemotron-3-ultra-550b-a55b"],
-  groq: ["openai/gpt-oss-20b", "openai/gpt-oss-120b"],
-  ollama: ["gemma4:31b", "gpt-oss:20b", "gpt-oss:120b"],
-  openai: [],
-};
+export const VERIFIED_MODELS: Record<ProviderId, string[]> = verifiedModels;
 export function modelDisplayName(id: string) {
   const labels: Record<string, string> = {
     "nvidia/nemotron-3-ultra-550b-a55b": "NVIDIA Nemotron 3 Ultra · 한국어 지원",
@@ -97,12 +94,4 @@ export function chooseSelection(
     (!requested.model ? entry.models[0].id : undefined);
   if (!model) throw new Error("INVALID_MODEL");
   return { provider: entry.id, model };
-}
-export function fallbackSelections(catalog: ProviderCatalog[], selected: Selection): Selection[] {
-  return [
-    selected,
-    ...catalog
-      .filter((c) => c.id !== selected.provider && c.models.length)
-      .map((c) => ({ provider: c.id, model: c.models[0].id })),
-  ];
 }

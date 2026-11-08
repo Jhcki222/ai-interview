@@ -2,7 +2,7 @@ import { getModelCatalog } from "@/lib/ai/provider";
 import { chooseSelection } from "@/lib/ai/catalog";
 export const dynamic = "force-dynamic";
 export async function GET() {
-  const providers = await getModelCatalog();
+  const providers = await getModelCatalog().catch(() => []);
   let selection = null;
   try {
     selection = chooseSelection(providers, {}, process.env);

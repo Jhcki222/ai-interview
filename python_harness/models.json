@@ -1,0 +1,15 @@
+{
+  "nvidia": [
+    "nvidia/nemotron-3-ultra-550b-a55b"
+  ],
+  "groq": [
+    "openai/gpt-oss-20b",
+    "openai/gpt-oss-120b"
+  ],
+  "ollama": [
+    "gemma4:31b",
+    "gpt-oss:20b",
+    "gpt-oss:120b"
+  ],
+  "openai": []
+}
