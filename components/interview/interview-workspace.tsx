@@ -2,7 +2,7 @@
 import type { HarnessEvent } from "@/lib/ai/harness/events";
 import { agentDecisionSchema, type AgentDecision } from "@/lib/ai/agent-contract";
 import { MarkdownContent } from "@/components/ui/markdown-content";
-import ThoughtLine from "@/components/ui/ThoughtLine";
+import { AiRunPanel } from "./ai-run-panel";
 import { LoadingState } from "@/components/ui/loading-state";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -69,7 +69,6 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
   const [agentEnabled, setAgentEnabled] = useState(true);
   const [agentDecision, setAgentDecision] = useState<AgentDecision | null>(null);
   const [aiStatus, setAIStatus] = useState<AIStatus | null>(null);
-  const [statusHistory, setStatusHistory] = useState<AIStatus[]>([]);
   const [elapsed, setElapsed] = useState(0);
   const [preview, setPreview] = useState("");
   const [sessionId, setSessionId] = useState("");
@@ -192,11 +191,16 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
     );
   }
   function handleStatus(value: AIStatus) {
-    if (value.state === "initializing") setHarnessEvents([]);
-    setAIStatus(value);
-    setStatusHistory((previous) =>
-      value.state === "initializing" ? [value] : [...previous.slice(-9), value],
-    );
+    if (value.state === "initializing") {
+      setHarnessEvents([]);
+      setAIStatus({ ...selection, ...value });
+    } else {
+      setAIStatus((previous) => ({
+        ...value,
+        provider: value.provider ?? previous?.provider,
+        model: value.model ?? previous?.model,
+      }));
+    }
     if (["connecting", "retrying", "fallback"].includes(value.state)) setPreview("");
   }
   async function run<T>(
@@ -261,6 +265,8 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
       controller.current = extractionController;
       running.current = true;
       setBusy(true);
+      setAIStatus(null);
+      setHarnessEvents([]);
       setProgress("문서에서 텍스트를 추출하고 있습니다.");
       const extracted = await extractDocuments(files, extractionController.signal, setProgress);
       const extractedJobPosting = await extractDocuments(
@@ -653,74 +659,15 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
         onFallbackChange={setAllowFallback}
         disabled={busy}
       />
-      {harnessEvents.length > 0 && (
-        <details className="harness-run-panel">
-          <summary>
-            실행 기록 ·{" "}
-            {harnessEvents.at(-1)?.stage === "completed"
-              ? "검증 완료"
-              : harnessEvents.at(-1)?.stage === "failed"
-                ? "실패"
-                : harnessEvents.at(-1)?.stage === "cancelled"
-                  ? "취소"
-                  : "진행 중"}{" "}
-            · {harnessEvents.length}개 단계
-          </summary>
-          <p>요청 ID: {harnessEvents[0].runId}</p>
-          <ol>
-            {harnessEvents.map((event) => (
-              <li key={`${event.runId}-${event.sequence}`}>
-                <strong>
-                  {
-                    {
-                      accepted: "입력 계약 확인",
-                      connecting: "제공자 연결",
-                      processing: "모델 실행",
-                      retrying: "재시도",
-                      fallback: "대체 모델 전환",
-                      validating: "출력 계약 검증",
-                      completed: "실행 완료",
-                      failed: "실행 실패",
-                      cancelled: "실행 취소",
-                    }[event.stage]
-                  }
-                </strong>
-                <span>
-                  {(event.elapsedMs / 1000).toFixed(1)}초
-                  {event.provider ? ` · ${event.provider} / ${event.model}` : ""}
-                  {event.code ? ` · ${event.code}` : ""}
-                </span>
-              </li>
-            ))}
-          </ol>
-          <small>문서·답변 원문과 API 키는 실행 기록에 포함하지 않습니다.</small>
-        </details>
-      )}
       {aiStatus && (
-        <section className="interview-ai-status" role="status">
-          <ThoughtLine
-            interrupted={!busy && aiStatus.state !== "completed"}
-            working={busy}
-            label={aiStatus.message}
-            doneLabel={aiStatus.message}
-            steps={statusHistory
-              .map((item) => item.message)
-              .filter((message, index, all) => index === 0 || message !== all[index - 1])}
-            elapsed={busy ? elapsed : (aiStatus.elapsedMs || 0) / 1000}
-            color="var(--primary)"
-            collapseOnSettle={false}
-          />
-          <small>
-            {aiStatus.provider && `${aiStatus.provider} · ${aiStatus.model}`} ·{" "}
-            {busy ? elapsed : Math.round((aiStatus.elapsedMs || 0) / 1000)}초
-            {aiStatus.attempt ? ` · 시도 ${aiStatus.attempt}` : ""}
-            {aiStatus.code ? ` · ${aiStatus.code}` : ""}
-            {aiStatus.correlationId ? ` · 요청 ${aiStatus.correlationId}` : ""}
-            {aiStatus.retryAfterMs
-              ? ` · ${Math.ceil(aiStatus.retryAfterMs / 1000)}초 후 재시도`
-              : ""}
-          </small>
-        </section>
+        <AiRunPanel
+          status={aiStatus}
+          events={harnessEvents}
+          selection={selection}
+          busy={busy}
+          elapsed={elapsed}
+          onCancel={() => controller.current?.abort()}
+        />
       )}
       {notice && (
         <div className="interview-notice" role="status">
@@ -744,8 +691,8 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
           )}
         </div>
       )}
-      {busy && (
-        <div className="panel interview-loading" role="status">
+      {busy && (!aiStatus || preview) && (
+        <div className="panel interview-loading">
           {!aiStatus && <LoadingState compact label={progress || "문서를 준비하고 있습니다."} />}
           {preview && (
             <div className="interview-preview">
@@ -753,9 +700,11 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
               <p className="interview-prewrap">{preview}</p>
             </div>
           )}
-          <button className="btn btn-secondary" onClick={() => controller.current?.abort()}>
-            요청 취소
-          </button>
+          {!aiStatus && (
+            <button className="btn btn-secondary" onClick={() => controller.current?.abort()}>
+              요청 취소
+            </button>
+          )}
         </div>
       )}
       {phase === "SETUP" && (
