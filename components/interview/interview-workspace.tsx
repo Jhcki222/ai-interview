@@ -38,6 +38,7 @@ import type { Question } from "@/types/question";
 import "./interview.css";
 import { INDUSTRIES, JOB_GROUPS } from "@/lib/interview/job-catalog";
 import { ModelPicker } from "./model-picker";
+import { DocumentDropzone } from "./document-dropzone";
 import { QuestionCompanyDialog } from "@/components/auth/question-company-dialog";
 import { SpeechInput } from "@/components/ui/speech-input";
 import type { Selection } from "@/lib/ai/catalog";
@@ -74,7 +75,6 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
   const [sessionId, setSessionId] = useState("");
   const [unmatched, setUnmatched] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
-  const [dragging, setDragging] = useState(false);
   const [learningAnswers, setLearningAnswers] = useState<Record<string, string>>({});
   const [learningEvaluations, setLearningEvaluations] = useState<Record<string, Evaluation>>({});
   const { user } = useAuth();
@@ -82,7 +82,6 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
   const [settings, setSettings] = useState<Settings>(initialSettings);
   const [files, setFiles] = useState<File[]>([]);
   const [jobPostingFiles, setJobPostingFiles] = useState<File[]>([]);
-  const [jobPostingDragging, setJobPostingDragging] = useState(false);
   const [context, setContext] = useState("");
   const [analysis, setAnalysis] = useState<Analysis>(blankAnalysis);
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -870,36 +869,9 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
               placeholder="주요 업무와 자격 요건을 붙여 넣으세요."
             />
           </label>
-          <div
-            className={`interview-upload ${jobPostingDragging ? "is-dragging" : ""}`}
-            role="group"
-            aria-label="채용공고 파일 업로드"
-            onDragOver={(event) => {
-              event.preventDefault();
-              if (!busy) setJobPostingDragging(true);
-            }}
-            onDragLeave={() => setJobPostingDragging(false)}
-            onDrop={(event) => {
-              event.preventDefault();
-              setJobPostingDragging(false);
-              addJobPostingFiles(Array.from(event.dataTransfer.files));
-            }}
-          >
-            <strong>채용공고 파일 추가</strong>
-            <span className="muted">
-              파일을 끌어 놓거나 선택하세요 · PDF, DOCX, TXT, PNG, JPG, WEBP · 최대 3개 · 파일당 5MB
-            </span>
-            <input
-              aria-label="채용공고 파일 선택"
-              type="file"
-              accept=".pdf,.docx,.txt,.png,.jpg,.jpeg,.webp"
-              multiple
-              disabled={busy}
-              onChange={(event) => {
-                addJobPostingFiles(Array.from(event.target.files || []));
-                event.target.value = "";
-              }}
-            />
+          <div className="interview-attachment" role="group" aria-label="채용공고 파일 업로드">
+            <strong>채용공고 첨부</strong>
+            <DocumentDropzone label="채용공고" disabled={busy} onFiles={addJobPostingFiles} />
             {jobPostingFiles.length > 0 && (
               <ul className="interview-files">
                 {jobPostingFiles.map((file, index) => (
@@ -947,37 +919,9 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
               </label>
             ))}
           </fieldset>
-          <div
-            className={`interview-upload ${dragging ? "is-dragging" : ""}`}
-            role="group"
-            aria-label="문서 업로드"
-            onDragOver={(e) => {
-              e.preventDefault();
-              if (!busy) setDragging(true);
-            }}
-            onDragLeave={() => setDragging(false)}
-            onDrop={(e) => {
-              e.preventDefault();
-              setDragging(false);
-              addFiles(Array.from(e.dataTransfer.files));
-            }}
-          >
+          <div className="interview-attachment" role="group" aria-label="문서 업로드">
             <strong>이력서 · 자기소개서 · 포트폴리오</strong>
-            <span className="muted">
-              여기로 파일을 끌어 놓거나 선택하세요 · PDF, DOCX, TXT, PNG, JPG, WEBP · 최대 3개 ·
-              파일당 5MB
-            </span>
-            <input
-              aria-label="면접 참고 문서 선택"
-              type="file"
-              accept=".pdf,.docx,.txt,.png,.jpg,.jpeg,.webp"
-              multiple
-              disabled={busy}
-              onChange={(e) => {
-                addFiles(Array.from(e.target.files || []));
-                e.target.value = "";
-              }}
-            />
+            <DocumentDropzone label="면접 참고 문서" disabled={busy} onFiles={addFiles} />
             {files.length > 0 && (
               <ul className="interview-files">
                 {files.map((file, i) => (
@@ -1001,7 +945,7 @@ export function InterviewWorkspace({ requestedSessionId }: { requestedSessionId?
                 ))}
               </ul>
             )}
-          </div>{" "}
+          </div>
           <label>
             경험 직접 입력 (선택)
             <textarea
